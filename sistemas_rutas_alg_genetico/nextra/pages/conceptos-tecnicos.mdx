@@ -1,0 +1,211 @@
+# 🔬 Conceptos Técnicos
+
+Comprende cómo funciona el algoritmo por debajo de la interfaz.
+
+## Algoritmo Genético
+
+### Qué es
+
+Un algoritmo de optimización inspirado en la evolución natural de las especies.
+
+### Analogía Biológica
+
+```
+Población de rutas (cromosomas)
+         Flecha baja
+    Evaluación
+  (medir fitness)
+         Flecha baja
+    Selección
+ (los mejores se reproducen)
+         Flecha baja
+    Cruce y Mutación
+  (crear variedad)
+         Flecha baja
+    Nueva Población
+    (siguiente generación)
+```
+
+### Componentes del Sistema
+
+#### Cromosoma (Ruta)
+
+Cada solución es una permutación de paradas:
+
+```
+Cromosoma = [0, 3, 1, 4, 2, 5, 6]
+             ^                 ^
+    Punto de inicio    Punto final
+    (fijo)             (fijo)
+```
+
+#### Población
+
+Conjunto de rutas posibles con 100 individuos.
+
+#### Fitness (Función Objetivo)
+
+Mide qué tan buena es cada ruta:
+
+```
+Menor distancia = MEJOR fitness
+Ejemplo: 11,800m es mejor que 15,200m
+```
+
+---
+
+## Operadores Genéticos
+
+### 1. Selección por Torneo (k=3)
+
+Se eligen 3 rutas aleatorias, se comparan y se selecciona la mejor.
+
+**Ventajas:**
+- Simple y eficiente
+- Equilibrio entre exploración
+- No elimina diversidad
+
+### 2. Cruce PMX (Partially Mapped Crossover)
+
+Intercambia segmento intermedio sin duplicados.
+
+### 3. Mutación por Intercambio
+
+Con probabilidad del 15%, intercambia dos paradas intermedias.
+
+### 4. Elitismo
+
+Los 2 mejores pasan automáticamente a la siguiente generación.
+
+---
+
+## Matriz de Distancias
+
+### Qué es
+
+Tabla NxN donde cada celda contiene la distancia real entre dos puntos.
+
+### Cálculo de Fitness
+
+Para la ruta [0, 3, 1, 4, 2, 5, 6]:
+
+```
+Distancia total = suma de todos los segmentos
+= 800 + 1900 + 1100 + 1300 + 1500 + 800
+= 7,200 metros
+```
+
+---
+
+## Integración con OpenStreetMap
+
+### Por qué OSM
+
+Proporciona distancias reales siguiendo calles, no líneas rectas.
+
+### Proceso de Geocodificación
+
+1. Buscar en base de datos exacta
+2. Si no: Geocodificar con Nominatim
+3. Si falla: Fallback euclidiano multiplicado por 1.3
+
+---
+
+## Análisis Automático con Google Gemini (NUEVO v2.0)
+
+### Qué es
+
+Sistema de inteligencia artificial que analiza automáticamente los resultados del algoritmo genético.
+
+### Integración Google Gemini
+
+Google Gemini 2.0 Flash es un modelo de lenguaje grande de Google que puede:
+
+- Analizar datos complejos de optimización
+- Generar explicaciones en lenguaje natural
+- Proporcionar recomendaciones basadas en IA
+- Producir documentación automática
+
+### Flujo de Análisis
+
+1. **Usuario solicita análisis** desde el panel de resultados
+2. **Frontend envía datos** al backend con resultados del GA
+3. **Backend construye prompt** con:
+   - Información de las rutas
+   - Parámetros del algoritmo usado
+   - Historial de evolución del fitness
+   - Estadísticas de mejora
+4. **Llamada a Gemini** mediante Google API
+5. **Procesamiento IA** genera análisis completo
+6. **Respuesta en Markdown** con:
+   - Resumen ejecutivo
+   - Explicación del algoritmo
+   - Análisis de parámetros
+   - Recomendaciones de mejora
+   - Conclusiones
+7. **Modal interactivo** muestra análisis formateado
+
+### Ventajas de la Integración IA
+
+| Ventaja | Descripción |
+|---------|-------------|
+| **Automatización** | No requiere análisis manual |
+| **Inteligencia** | Comprende contexto y mejora propuestas |
+| **Explicabilidad** | Genera explicaciones claras del AG |
+| **Documentación** | Crea reportes listos para usar |
+| **Velocidad** | Análisis en 3-5 segundos |
+
+### Especificaciones Técnicas
+
+**Modelo:** `gemini-2.0-flash`
+
+- Velocidad: ~1-3 segundos por análisis
+- Tokens: ~500-1000 tokens entrada/salida
+- Disponibilidad: API Key requerida
+- Coste: ~$0.10 USD por 1M tokens
+
+### Ejemplo de Salida
+
+```markdown
+# Análisis de Optimización - Ruta Central
+
+## Resumen Ejecutivo
+Se optimizó la ruta central mejorando
+la distancia en 15% (de 12.5km a 10.6km).
+
+## Explicación del Algoritmo
+Se utilizó AG con población de 100...
+
+## Recomendaciones
+1. Considerar reordenamiento por horario
+2. Validar paradas nuevas...
+3. Monitorear cambios de tráfico...
+```
+
+### Limitaciones y Consideraciones
+
+- Requiere conexión a internet
+- Depends on Google API availability
+- Rate limiting: 60 req/min (free tier)
+- API Key debe mantenerse segura
+- Respuestas pueden variar por natura de IA
+
+---
+
+## Parámetros del Algoritmo
+
+### Configuración Actual
+
+- Población: 100 individuos
+- Generaciones: 200 iteraciones
+- Tasa Cruce: 80 por ciento
+- Tasa Mutación: 15 por ciento
+- Elitismo: 2 mejores
+
+### Convergencia
+
+Típicamente converge en generación 50-100 de 200.
+
+---
+
+**Siguiente paso**: [Troubleshooting](/troubleshooting)

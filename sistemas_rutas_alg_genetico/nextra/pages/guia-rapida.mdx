@@ -1,0 +1,107 @@
+# ⚡ Guía Rápida
+
+Optimiza tu primera ruta en **5 minutos**.
+
+## 1. Acceder a la Aplicación
+
+Abre tu navegador en: **http://localhost:3000**
+
+Deberías ver la interfaz principal con el título "Optimizador de Rutas UNILLANOS".
+
+## 2. Cargar Rutas Disponibles
+
+La aplicación cargará automáticamente las **11 rutas disponibles**:
+
+1. COVISAN
+2. MARACOS
+3. TERMINAL
+4. VILLACENTRO
+5. VIVA
+6. GRAMA
+7. PORFÍA
+8. MONTECARLO/AMARILLO
+9. POSTOBÓN
+10. RELIQUIA
+11. CENTRO/PARQUE
+
+## 3. Seleccionar una Ruta
+
+En el panel izquierdo, haz clic en el dropdown **"Seleccionar Ruta"**:
+
+![Selector de Rutas](/images/Seleccion_de_Rutas.png)
+
+Selecciona cualquier ruta, por ejemplo **MONTECARLO/AMARILLO**.
+
+## 4. Optimizar la Ruta
+
+Haz clic en el botón **"Optimizar Ruta"**
+
+![Botón Optimizar Ruta](/images/Boton_OptiRut.png)
+
+**Estados del botón:**
+- 🔵 Azul normal: Listo para optimizar
+- 🟡 Amarillo: Procesando (espera)
+- ✅ Verde: Completado
+
+## 5. Ver Resultados
+![Resultados_software](/images/SoftwareCompleto.png)
+### Panel de Resultados (Izquierda)
+- 📏 **Distancia total optimizada** en km
+- 📍 **Número de paradas**
+- 🧬 **Parámetros del algoritmo** utilizados
+- 📋 **Orden optimizado de paradas**
+
+### Mapa Interactivo (Centro/Derecha)
+- 🗺️ Visualiza la ruta completa
+- 📌 Marcadores en cada parada
+- 🛣️ Ruta siguiendo calles reales
+
+**Interactuar con el mapa:**
+- 🖱️ **Arrastra** para mover
+- 🔍 **Zoom +/-** para acercar/alejar
+- 📍 **Clic en marcadores** para detalles
+
+### Panel de Procedimiento (Abajo)
+- 📊 Evolución del algoritmo generación por generación
+- 🎯 Ejemplos de selección por torneo
+- 🧬 Ejemplos de cruce y mutación
+- ✅ Mejora porcentual total
+
+## Ejemplo de Resultado
+
+![Procedimientos](/images/PaneldeProcedimiento.png)
+
+## 6. Análisis con IA (Opcional) ✨
+
+Puedes generar un análisis automático de los resultados:
+
+1.  Haz clic en **"Análisis con IA"**
+![BotonIa](/images/botonIa.png)
+2. Espera 3-5 segundos
+![CargaIa](/images/Cargadeia.png)
+3. Se abrirá un modal con el análisis formateado
+![InformacionIa](/images/InformacionIa.png)
+
+**Nota:** Requiere `GEMINI_API_KEY` configurada (ver [Instalación](/instalacion))
+
+## 7. Interpretar Resultados
+
+![Interpretador_Resultados](/images/Interpretador_deResultados.png)
+
+**Rango típico de mejora:** 15-30% de reducción de distancia
+
+---
+
+## 🎓 ¿Qué pasó?
+
+El sistema:
+
+1. 📍 **Geocodificó** todas las direcciones de paraderos
+2. 🗺️ **Consultó OpenStreetMap** para obtener distancias reales
+3. 🧬 **Ejecutó un Algoritmo Genético** durante 200 generaciones
+4. 📊 **Encontró el mejor orden** para minimizar distancia total
+5. 🎨 **Visualizó resultados** en el mapa y paneles
+
+---
+
+**Siguiente paso**: [Uso Detallado](/uso-detallado) para explorar todas las funciones

@@ -1,0 +1,351 @@
+import { Callout } from 'nextra/components'
+
+# Diagramas Actualizados v2.0
+
+Documentación completa de los diagramas UML del sistema actualizado con integración de **Google Gemini AI**.
+
+## 🆕 Cambios en v2.0
+
+El sistema ha sido actualizado para incluir análisis automático con inteligencia artificial:
+
+- **Nuevo endpoint:** `/api/analisis-ia` en el Backend
+- **Nueva clase:** `GeminiAIAnalyzer` para procesamiento con Gemini
+- **Nuevo componente:** `AIAnalysisModal.jsx` en el Frontend
+- **Nueva estructura:** `AnalisisIA` para datos de análisis
+- **Nuevos casos de uso:** 3 nuevos casos relacionados con análisis IA
+
+<Callout type="info">
+  Los diagramas de esta sección están en formato **PlantUML** y pueden visualizarse
+  en [PlantUML Online Editor](http://plantuml.com/plantuml/uml/). Simplemente copia
+  el contenido del diagrama y pégalo en el editor.
+</Callout>
+
+## 📋 Casos de Uso v2.0
+
+### Resumen de cambios
+
+El diagrama de casos de uso ahora incluye:
+
+- **UC26:** Generar análisis con Google Gemini
+- **UC27:** Construir prompt detallado
+- **UC28:** Interpretar resultados del GA
+- **UC29:** Generar recomendaciones
+- **UC30:** Renderizar análisis en Markdown
+- **UC31:** Exportar análisis (copiar/descargar)
+
+### Nuevo actor
+
+- `Google Gemini AI` - API de Google para análisis inteligente
+
+### Relaciones principales
+
+```
+UC20 (Mejor ruta) → UC26 (Análisis IA)
+UC26 → Gemini API
+UC26 → UC27 → UC28 → UC29 → UC30 → UC31 (Flujo de análisis)
+```
+
+### Características
+
+- **Prompt contextualizado:** Incluye datos de ruta, parámetros del AG e historial de fitness
+- **Análisis completo:** Resumen, explicación, recomendaciones y conclusiones
+- **Exportación:** Copiar al portapapeles o descargar como Markdown
+
+## 🏗️ Diagrama de Clases v2.0
+
+### Nueva clase: GeminiAIAnalyzer
+
+```python
+class GeminiAIAnalyzer {
+    - api_key: str
+    - modelo: str = "gemini-2.0-flash"
+    - cliente_gemini: genai.GenerativeModel
+    
+    + __init__(api_key)
+    + construir_prompt(datos_ruta, resultados)
+    + generar_analisis(prompt)
+    + interpretar_resultados(json)
+    + generar_recomendaciones(analisis)
+    + formatear_markdown(analisis_raw)
+}
+```
+
+### Nueva estructura de datos: AnalisisIA
+
+```python
+class AnalisisIA {
+    - resumen_ejecutivo: str
+    - explicacion_algoritmo: str
+    - analisis_parametros: str
+    - recomendaciones: list[str]
+    - conclusiones: str
+    - markdown_completo: str
+}
+```
+
+### Nuevo componente React: AIAnalysisModal
+
+```javascript
+class AIAnalysisModal {
+    - analisis: string
+    - markdown: JSX.Element
+    - cargando: boolean
+    - onClose: function
+    
+    + render(): JSX.Element
+    + renderMarkdown(texto): JSX.Element
+    + copiarAlPortapapeles(): void
+    + descargarComoMarkdown(): void
+    + handleCerrar(): void
+}
+```
+
+### Cambios en clases existentes
+
+**FlaskAPI:**
+```python
++ analizar_con_ia(resultados_ga) -> dict  # Nuevo método
+```
+
+**App (React):**
+```javascript
+- modalIA: boolean              # Nuevo state
+- analisisIA: AnalisisIA?       # Nuevo state
+
++ generarAnalisisIA(): void     # Nuevo método
++ cerrarModalIA(): void         # Nuevo método
+```
+
+**ApiClient:**
+```javascript
++ generarAnalisisIA(datos): Promise  # Nuevo método
+```
+
+## 🔄 Secuencia de Análisis IA
+
+### Flujo detallado (12 pasos)
+
+1. **Usuario inicia:** Hace clic en "Generar Análisis IA"
+2. **Frontend prepara:** Desactiva botón, muestra spinner
+3. **Envío de datos:** POST /api/analisis-ia con resultados del GA
+4. **Validación Backend:** Recibe y valida datos
+5. **Construcción de Prompt:** Backend construye prompt contextualizado
+   - Datos de paradas
+   - Parámetros del AG
+   - Historial de fitness
+   - Estadísticas
+6. **Llamada a Gemini:** POST a Google Gemini 2.0 Flash
+7. **Procesamiento IA:** Google Gemini analiza con inteligencia artificial
+8. **Generación de análisis:** Crea contenido Markdown con:
+   - Resumen ejecutivo
+   - Explicación del algoritmo
+   - Análisis de parámetros
+   - Recomendaciones
+   - Conclusiones
+9. **Respuesta del Backend:** Retorna análisis formateado
+10. **Renderizado:** Frontend renderiza Markdown en modal
+11. **Interacción del usuario:** Puede copiar o descargar
+12. **Cierre:** Usuario cierra modal
+
+**Tiempo típico:** 3-5 segundos
+
+## 🏛️ Arquitectura del Sistema v2.0
+
+### Capas del sistema
+
+**Frontend (React - Puerto 3000)**
+- RouteSelector
+- MapView (Leaflet)
+- GeneticAlgorithmPanel
+- AlgorithmProcedurePanel
+- **AIAnalysisModal (NUEVO)**
+
+**API REST (Flask - Puerto 5000)**
+- `/api/health`
+- `/api/rutas/info`
+- `/api/rutas/optimizar`
+- **`/api/analisis-ia` (NUEVO)**
+
+**Backend Processing (Python)**
+- Gestión de Datos
+- Cálculo de Distancias
+- Optimización (AG)
+- **Análisis con IA (NUEVO)**
+
+**Caché (Triple nivel)**
+- Coordenadas geocodificadas
+- Matrices de distancias
+- Geometrías de calles
+
+**Datos Persistentes (JSON)**
+- rutas_reales.json (11 rutas, 150+ paradas)
+- coordenadas_exactas.py (150+ paraderos)
+
+**Servicios Externos**
+- OpenStreetMap (red vial)
+- Nominatim (geocoding)
+- **Google Gemini 2.0 Flash (NUEVO)**
+
+### Flujos principales
+
+```
+Usuario → Frontend → API REST → Backend
+                                  ├→ DataLoader
+                                  ├→ CalculadoraDistancias
+                                  ├→ GeneticAlgorithm
+                                  └→ GeminiAIAnalyzer (NEW) → Gemini API
+```
+
+## 📊 Flujo Principal del Sistema v2.0
+
+### Pasos generales
+
+1. **Inicio:** Usuario accede al sistema (localhost:3000)
+2. **Validación:** Sistema verifica estado del Backend
+3. **Carga:** Obtiene lista de rutas disponibles
+4. **Selección:** Usuario selecciona rutas y parámetros del AG
+5. **Optimización:** Backend ejecuta algoritmo genético
+   - Geocodifica paraderos
+   - Descarga red vial de OSM
+   - Calcula matriz de distancias
+   - Evoluciona población
+6. **Resultados:** Frontend muestra ruta optimizada en mapa
+7. **Análisis (NUEVO):** Usuario puede generar análisis con IA
+8. **Modal:** Se abre modal con análisis Markdown
+9. **Exportación:** Usuario puede copiar o descargar análisis
+10. **Finalización:** Usuario termina o realiza otra optimización
+
+### Decisiones clave
+
+- ¿Backend disponible? → Si no, muestra error
+- ¿Coords en caché? → Si sí, evita geocodificación
+- ¿Usuario quiere análisis? → Si sí, inicia proceso de IA
+- ¿Gemini disponible? → Si no, muestra error
+
+## 📈 Comparación v1.0 vs v2.0
+
+| Aspecto | v1.0 | v2.0 | Cambio |
+|--------|------|------|--------|
+| **Casos de Uso** | 28 | 31 | +3 (+10.7%) |
+| **Clases Backend** | 6 | 7 | +1 (GeminiAIAnalyzer) |
+| **Clases Frontend** | 7 | 8 | +1 (AIAnalysisModal) |
+| **Estructuras Datos** | 6 | 7 | +1 (AnalisisIA) |
+| **Endpoints API** | 3 | 4 | +1 (/api/analisis-ia) |
+| **APIs Externas** | 2 | 3 | +1 (Google Gemini) |
+| **Análisis** | Manual | Automático con IA | ✨ Nuevo |
+| **UI Modal** | No | Sí | ✨ Nuevo |
+
+## 🔧 Especificaciones Técnicas - IA
+
+### Google Gemini Integration
+
+- **Modelo:** `gemini-2.0-flash`
+- **Velocidad:** ~1-3 segundos por análisis
+- **Tokens:** ~500-1000 tokens entrada/salida
+- **Coste:** ~$0.10 USD por 1M tokens entrada
+
+### Estructura de Prompt
+
+```markdown
+# Análisis de Optimización de Rutas
+
+## Contexto
+- Rutas analizadas: X
+- Paradas totales: Y
+- Distancia mejorada: Z%
+
+## Datos del Algoritmo Genético
+- Población: 100
+- Generaciones: 200
+- Parámetros: [...]
+
+## Historial de Fitness
+[Evolución de fitness]
+
+## Solicitud
+Proporciona análisis en:
+1. Resumen ejecutivo
+2. Explicación del algoritmo
+3. Análisis de parámetros
+4. Recomendaciones
+5. Conclusiones
+```
+
+## 📚 Archivos de Diagramas
+
+Los archivos PlantUML se encuentran en:
+```
+backend/documentos/
+├── diagrama_casos_uso.puml ← ACTUALIZADO
+├── diagrama_clases_v2.puml ← ACTUALIZADO (nuevo)
+├── diagrama_arquitectura_v2.puml ← ACTUALIZADO (nuevo)
+├── diagrama_flujo_v2.puml ← ACTUALIZADO (nuevo)
+├── diagrama_secuencia_analisis_ia.puml ← NUEVO
+└── DIAGRAMAS_ACTUALIZADOS_V2.md ← Documentación
+```
+
+## 🚀 Cómo usar los diagramas
+
+### Opción 1: PlantUML Online
+1. Visita [PlantUML Online Editor](http://plantuml.com/plantuml/uml/)
+2. Copia el contenido del archivo .puml
+3. Pega en el editor
+4. Visualiza el diagrama
+
+### Opción 2: Visual Studio Code
+1. Instala la extensión "PlantUML" (jebbs.plantuml)
+2. Abre el archivo .puml
+3. Presiona `Alt+D` para previsualizar
+
+### Opción 3: Generar imagen
+```bash
+# Instalar plantuml (requiere Java)
+sudo apt-get install plantuml
+
+# Generar PNG
+plantuml backend/documentos/diagrama_casos_uso.puml
+
+# Generar SVG
+plantuml -tsvg backend/documentos/diagrama_casos_uso.puml
+```
+
+## ✅ Validación
+
+- [x] Casos de Uso actualizados
+- [x] Diagrama de Clases v2.0
+- [x] Secuencia de Análisis IA
+- [x] Arquitectura actualizada
+- [x] Flujo Principal actualizado
+- [x] Documentación completa
+
+## 📝 Notas importantes
+
+<Callout type="warning">
+  **API Key de Google Gemini:** Debe configurarse como variable de entorno:
+  ```bash
+  export GOOGLE_API_KEY="tu_api_key_aqui"
+  ```
+</Callout>
+
+<Callout type="info">
+  **Conexión a Internet:** Requerida para todas las operaciones que incluyan Google Gemini.
+</Callout>
+
+<Callout type="info">
+  **Rate Limiting:** Google Gemini tiene límites:
+  - Free tier: 60 solicitudes/minuto
+  - Pagado: Límites mayores
+</Callout>
+
+## 📞 Soporte
+
+Para más información sobre los diagramas:
+1. Consulta `backend/documentos/DIAGRAMAS_ACTUALIZADOS_V2.md`
+2. Revisa la [documentación de PlantUML](https://plantuml.com/)
+3. Consulta la [documentación de Google Gemini](https://ai.google.dev/)
+
+---
+
+**Versión:** 2.0  
+**Última actualización:** 2024  
+**Estado:** ✅ Documentación completa

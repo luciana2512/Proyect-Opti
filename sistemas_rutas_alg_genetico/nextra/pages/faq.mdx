@@ -1,0 +1,202 @@
+# Preguntas Frecuentes
+
+Las preguntas más comunes respondidas.
+
+## General
+
+### Cuántas rutas se pueden optimizar a la vez
+
+Se puede optimizar una ruta a la vez en la interfaz actual. El sistema está optimizado para procesar una ruta por solicitud.
+
+Nota técnica: El backend soporta múltiples rutas, pero la UI frontend lo hace de una en una.
+
+---
+
+### Cuánto tiempo toma optimizar una ruta
+
+Depende del estado del caché:
+
+| Situación | Tiempo |
+|-----------|--------|
+| Primera ejecución | 30-60 segundos |
+| Con caché (segundas veces) | 5-10 segundos |
+| Solo algoritmo GA | 3-5 segundos |
+
+Primera vez es más lenta porque:
+- Descarga red vial de OSM
+- Geocodifica todas las direcciones
+- Calcula matriz de distancias completa
+
+---
+
+### Es posible exportar los resultados
+
+No hay botón de exportación en la interfaz actual, pero puedes:
+
+1. Captura de pantalla: Print Screen
+2. Copiar datos: Inspector web (F12)
+3. Exportar JSON: Via curl del API
+
+```bash
+curl "http://localhost:5000/api/rutas/optimizar?rutas_ids=1" > resultados.json
+```
+
+---
+
+## Algoritmo Genético
+
+### Por qué a veces da resultados diferentes
+
+El algoritmo genético es estocástico (tiene aleatoriedad).
+
+**Ejemplo:**
+- Primera ejecución: 13.5 km (mejora 22 por ciento)
+- Segunda ejecución: 13.4 km (mejora 23 por ciento)
+
+La diferencia es normal y mínima.
+
+---
+
+### Qué significan Mejor, Promedio y Peor en cada generación
+
+**Mejor:** Ruta con distancia más corta en esa generación
+
+**Promedio:** Distancia promedio de todos los individuos
+
+**Peor:** Ruta con distancia más larga en esa generación
+
+---
+
+### Qué es el elitismo
+
+Estrategia que preserva los mejores individuos automáticamente:
+
+```
+Gen 50: Los 2 mejores - Gen 51 (sin cambios)
+        Resto de población (reproducción)
+```
+
+Ventajas:
+- La solución NUNCA empeora
+
+---
+
+## Análisis con IA
+
+### ¿Qué es el análisis con IA?
+
+Genera automáticamente un informe (Markdown) analizando la optimización con Google Gemini.
+
+### ¿Cómo genero un análisis?
+
+1. Optimiza una ruta
+2. Haz clic en "Análisis con IA"
+3. Espera 3-5 segundos
+4. El modal muestra el análisis formateado
+
+### ¿Necesito una API Key?
+
+Sí. Configura `GEMINI_API_KEY` en `backend/.env` (ver [Instalación](/instalacion))
+
+### ¿Cuánto tarda?
+
+Normalmente **3-5 segundos** dependiendo de conexión y carga del servidor
+
+### ¿Puedo exportar el análisis?
+
+Sí - el modal ofrece dos opciones:
+- **Copiar**: Al portapapeles (Markdown)
+- **Descargar**: Como archivo `.md`
+
+### ¿Hay límites de uso?
+
+Sí - Google Gemini aplica rate limits:
+- Free tier: 60 solicitudes/minuto
+- Para producción: considera un plan pagado
+- Garantiza convergencia
+- Explora mientras protege lo bueno
+
+---
+
+### Puede quedar atrapado en un óptimo local
+
+Sí, pero se mitiga con:
+
+1. Mutación (15 por ciento): Introduce variabilidad
+2. Población (100): Mantiene diversidad
+3. Generaciones (200): Tiempo para explorar
+4. Cruce PMX: Combina soluciones inteligentemente
+
+---
+
+## Datos y Coordenadas
+
+### Cómo agregar una nueva ubicación exacta
+
+Editar backend/coordenadas_exactas.py:
+
+```python
+"nombre de la ubicación": (latitud, longitud),
+```
+
+**Ejemplo:**
+```python
+"nueva bomba en villa": (4.140000, -73.630000),
+```
+
+**Importante:**
+- Latitud siempre positiva (aprox 4.xxx)
+- Longitud siempre negativa (aprox -73.xxx)
+- Incluir variaciones de nombre
+
+---
+
+### Dónde consigo las coordenadas exactas
+
+De varias fuentes:
+
+1. **OpenStreetMap oficial:**
+   https://www.openstreetmap.org/
+   Buscar lugar - Clic derecho - Mostrar dirección
+
+2. **Google Maps:**
+   Clic derecho en ubicación - Copiar coordenadas
+
+3. **GPS Villavicencio:**
+   Visitar en persona con GPS o móvil
+
+---
+
+## Académico
+
+### Qué tipo de problema es este
+
+Es una variación del Problema del Viajero (TSP) con restricciones.
+
+**Problema Clásico TSP:**
+- Visitar N ciudades exactamente una vez
+- Minimizar distancia total
+- Retornar al origen
+
+**Nuestro Problema:**
+- N paradas
+- INICIO y FIN FIJOS (restricción especial)
+- Minimizar distancia total
+- Matriz de distancias REALES
+
+Complejidad: O(n factorial) sin optimización
+
+---
+
+### Por qué Algoritmo Genético
+
+Razones:
+
+1. TSP es NP-Completo: Sin solución polinomial conocida
+2. Fuerza bruta imposible: Millones de permutaciones
+3. AG es práctico: Encuentra solución buena en tiempo razonable
+4. Validado académicamente: Usado en logística real
+
+---
+
+¿Más preguntas? Revisa otras secciones del manual.
