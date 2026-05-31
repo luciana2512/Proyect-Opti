@@ -47,11 +47,12 @@ const TarjetaEstadistica = ({ icono: Icono, etiqueta, valor, unidad = '', color 
   );
 };
 
-const AcuicolaPanel = () => {
+const AcuicolaPanel = ({ origenRuta = 'O1', setOrigenRuta = () => {}, destinoRuta = 'D1', setDestinoRuta = () => {} }) => {
   const [red, setRed]                                   = useState(null);
   const [resultado, setResultado]                       = useState(null);
   const [resultadoGA, setResultadoGA]                   = useState(null);
   const [geometriaRuta, setGeometriaRuta]               = useState([]);
+  const [geometriaRutaGA, setGeometriaRutaGA]           = useState([]);
   const [conectividad, setConectividad]                 = useState(null);
   const [cargandoRed, setCargandoRed]                   = useState(false);
   const [cargandoPL, setCargandoPL]                     = useState(false);
@@ -60,8 +61,6 @@ const AcuicolaPanel = () => {
   const [mostrarConectividad, setMostrarConectividad]   = useState(false);
 
   // Controles
-  const [origenRuta, setOrigenRuta]                     = useState('O1');
-  const [destinoRuta, setDestinoRuta]                   = useState('D1');
   const [algoritmo, setAlgoritmo]                       = useState('dijkstra');
   const [transitoGA, setTransitoGA]                     = useState('T1');
   const [mostrarFlujos, setMostrarFlujos]               = useState(false);
@@ -141,25 +140,41 @@ const AcuicolaPanel = () => {
   const optimizarDistribucion = async () => {
     setCargandoGA(true);
     setResultadoGA(null);
-    toast.loading(`AG — optimizando red completa (${parametrosGA.generaciones} gen.)...`, { id: 'ga' });
+    setGeometriaRutaGA([]);
+    toast.loading(`AG TSP — calculando ruta desde ${transitoGA} (${parametrosGA.generaciones} gen.)...`, { id: 'ga' });
     try {
-      const resp = await axios.get('/api/acuicola/ag_red', {
-        params: { ...parametrosGA, transito_id: transitoGA },
+      const resp = await axios.get(`/api/acuicola/distribucion/${transitoGA}`, {
+        params: { ...parametrosGA },
         timeout: 120000,
       });
       if (resp.data.error) throw new Error(resp.data.error);
       setResultadoGA(resp.data);
-      const comparacion = resp.data.comparacion_lp_ag;
-      const textoGap = comparacion?.gap_pct != null
-        ? ` — Gap vs LP: +${comparacion.gap_pct}%`
-        : (comparacion?.ag_factible === false ? ' — solución infactible' : '');
-      toast.success(`AG completado${textoGap}`, { id: 'ga' });
+      toast.success(
+        `Ruta óptima: ${resp.data.n_destinos} supermercados · ${resp.data.distancia_total_km} km`,
+        { id: 'ga' }
+      );
+      // Pedir geometría OSRM para la ruta TSP (calles reales)
+      const ordenNodos = resp.data.orden_optimizado;
+      if (ordenNodos?.length >= 2) {
+        toast.loading('Cargando ruta TSP por calles reales...', { id: 'osrm-ga' });
+        axios.get('/api/acuicola/geometria_ruta', {
+          params: { nodos: ordenNodos.join(',') },
+          timeout: 20000,
+        }).then(r => {
+          const pts = r.data?.geometria || [];
+          if (pts.length > 2) {
+            setGeometriaRutaGA(pts);
+            toast.success(`Ruta TSP OSM: ${pts.length} puntos`, { id: 'osrm-ga', duration: 2500 });
+          } else { toast.dismiss('osrm-ga'); }
+        }).catch(() => toast.dismiss('osrm-ga'));
+      }
     } catch (e) {
       toast.error('Error AG: ' + (e.response?.data?.error || e.message), { id: 'ga' });
     } finally {
       setCargandoGA(false);
     }
   };
+
 
   const resultadoPL  = resultado?.resultado_pl;
   const rutaOptima   = resultado?.ruta_optima;
@@ -352,6 +367,7 @@ const AcuicolaPanel = () => {
               distribucionGA={resultadoGA}
               flujos_ag={resultadoGA?.flujos_ag || {}}
               geometriaRuta={geometriaRuta}
+              geometriaRutaGA={geometriaRutaGA}
             />
           ) : (
             <NetworkGraphSVG
@@ -719,11 +735,11 @@ const AcuicolaPanel = () => {
               <Dna className="w-6 h-6" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold">Algoritmo Genético — Red Completa</CardTitle>
+              <CardTitle className="text-lg font-bold">Algoritmo Genético — Ruta de Entrega (TSP)</CardTitle>
               <CardDescription>
-                Cromosoma = flujo en cada arista del grafo. Fitness = costo total + penalización por
-                demanda incumplida y capacidad excedida. Operadores: selección por torneo, cruce aritmético
-                y mutación gaussiana. Compara la solución AG con el óptimo del modelo LP.
+                Cromosoma = orden de visita a supermercados. El AG resuelve el Problema del Viajero (TSP):
+                dado un centro de acopio, encuentra la secuencia de entregas de menor distancia total
+                pasando por todos los supermercados de su zona y regresando al punto de partida.
               </CardDescription>
             </div>
           </div>
@@ -734,7 +750,7 @@ const AcuicolaPanel = () => {
             {/* Configuración */}
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hub de referencia (filtro de cobertura)</label>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Centro de Acopio (Hub de Salida)</label>
                 <select
                   value={transitoGA}
                   onChange={e => setTransitoGA(e.target.value)}
@@ -745,7 +761,7 @@ const AcuicolaPanel = () => {
                   ))}
                 </select>
                 <p className="text-[10px] text-muted-foreground">
-                  El AG optimiza la red completa. Este hub filtra la cobertura de demanda en los resultados.
+                  El AG calculará la ruta óptima desde este hub hacia todos sus supermercados asignados y de regreso.
                 </p>
               </div>
 
@@ -787,161 +803,148 @@ const AcuicolaPanel = () => {
               >
                 {cargandoGA
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Ejecutando AG ({parametrosGA.generaciones} gen.)...</>
-                  : <><Dna className="w-4 h-4" /> Optimizar Red con Algoritmo Genético</>}
+                  : <><Dna className="w-4 h-4" /> Calcular Ruta de Entrega con AG (TSP)</>}
               </button>
             </div>
 
-            {/* Resultado GA */}
+            {/* Resultado AG TSP */}
             <div>
               {resultadoGA ? (
                 <div className="space-y-4 animate-in fade-in duration-500">
 
-                  {/* ── Comparación LP vs AG ──────────────────────────────── */}
-                  {resultadoGA.comparacion_lp_ag && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
-                        <TrendingDown className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-                        <p className="text-[10px] text-muted-foreground">Costo LP (óptimo)</p>
-                        <p className="font-black text-blue-600 dark:text-blue-400 text-sm leading-tight">
-                          {resultadoGA.comparacion_lp_ag.costo_lp != null
-                            ? Number(resultadoGA.comparacion_lp_ag.costo_lp).toLocaleString('es-CO')
-                            : '—'}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">KCOP</p>
+                  {/* ── Stats principales ─────────────────────────────── */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
+                      <Route className="w-4 h-4 text-purple-500 mx-auto mb-1" />
+                      <p className="text-[10px] text-muted-foreground">Distancia total</p>
+                      <p className="font-black text-purple-600 dark:text-purple-400 text-sm leading-tight">
+                        {resultadoGA.distancia_total_km}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">km recorridos</p>
+                    </div>
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 text-center">
+                      <MapPin className="w-4 h-4 text-green-500 mx-auto mb-1" />
+                      <p className="text-[10px] text-muted-foreground">Supermercados</p>
+                      <p className="font-black text-green-600 dark:text-green-400 text-sm leading-tight">
+                        {resultadoGA.n_destinos}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">paradas en ruta</p>
+                    </div>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3 text-center">
+                      <BarChart3 className="w-4 h-4 text-blue-500 mx-auto mb-1" />
+                      <p className="text-[10px] text-muted-foreground">Tiempo AG</p>
+                      <p className="font-black text-blue-600 dark:text-blue-400 text-sm leading-tight">
+                        {resultadoGA.tiempo_ms != null ? resultadoGA.tiempo_ms.toFixed(0) : '—'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">ms</p>
+                    </div>
+                  </div>
+
+                  {/* ── Orden de entrega ──────────────────────────────── */}
+                  {resultadoGA.orden_optimizado?.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                        Orden óptimo de entrega ({resultadoGA.transito_nombre}):
+                      </p>
+                      {/* Secuencia de nodos */}
+                      <div className="flex flex-wrap items-center gap-1 p-2 bg-purple-500/5 rounded-xl border border-purple-500/15 mb-2">
+                        {resultadoGA.orden_optimizado.map((nid, i) => (
+                          <React.Fragment key={i}>
+                            <span className={`text-[11px] font-mono px-2 py-0.5 rounded-lg border font-bold ${
+                              i === 0 || i === resultadoGA.orden_optimizado.length - 1
+                                ? 'bg-purple-600 text-white border-purple-600'
+                                : 'bg-secondary/60 border-border/50'
+                            }`}>{nid}</span>
+                            {i < resultadoGA.orden_optimizado.length - 1 && (
+                              <span className="text-[10px] text-muted-foreground">→</span>
+                            )}
+                          </React.Fragment>
+                        ))}
                       </div>
-                      <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 text-center">
-                        <Dna className="w-4 h-4 text-purple-500 mx-auto mb-1" />
-                        <p className="text-[10px] text-muted-foreground">Costo AG</p>
-                        <p className="font-black text-purple-600 dark:text-purple-400 text-sm leading-tight">
-                          {Number(resultadoGA.comparacion_lp_ag.costo_ag).toLocaleString('es-CO')}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">KCOP</p>
-                      </div>
-                      <div className={`border rounded-xl p-3 text-center ${
-                        resultadoGA.comparacion_lp_ag.gap_pct == null
-                          ? 'bg-red-500/10 border-red-500/20'
-                          : (resultadoGA.comparacion_lp_ag.gap_pct < 20
-                            ? 'bg-green-500/10 border-green-500/20'
-                            : 'bg-amber-500/10 border-amber-500/20')
-                      }`}>
-                        <BarChart3 className={`w-4 h-4 mx-auto mb-1 ${
-                          resultadoGA.comparacion_lp_ag.gap_pct == null
-                            ? 'text-red-500'
-                            : (resultadoGA.comparacion_lp_ag.gap_pct < 20 ? 'text-green-500' : 'text-amber-500')
-                        }`} />
-                        <p className="text-[10px] text-muted-foreground">Gap AG vs LP</p>
-                        <p className={`font-black text-sm leading-tight ${
-                          resultadoGA.comparacion_lp_ag.gap_pct == null
-                            ? 'text-red-600 dark:text-red-400'
-                            : (resultadoGA.comparacion_lp_ag.gap_pct < 20
-                              ? 'text-green-600 dark:text-green-400'
-                              : 'text-amber-600 dark:text-amber-400')
-                        }`}>
-                          {resultadoGA.comparacion_lp_ag.gap_pct != null
-                            ? `+${resultadoGA.comparacion_lp_ag.gap_pct}%`
-                            : 'Infact.'}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground">
-                          {resultadoGA.comparacion_lp_ag.gap_pct != null ? 'vs óptimo' : 'demanda incompleta'}
-                        </p>
+
+                      {/* Tabla de saltos */}
+                      <div className="max-h-40 overflow-y-auto rounded-xl border border-border/40">
+                        <table className="w-full text-xs">
+                          <thead className="bg-secondary/40 sticky top-0">
+                            <tr>
+                              <th className="px-2 py-1.5 text-left font-bold">#</th>
+                              <th className="px-2 py-1.5 text-left font-bold">Desde</th>
+                              <th className="px-2 py-1.5 text-left font-bold">Hasta</th>
+                              <th className="px-2 py-1.5 text-right font-bold">km</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {resultadoGA.ruta_detalle?.map((seg, i) => (
+                              <tr key={i} className="border-t border-border/30 hover:bg-secondary/20">
+                                <td className="px-2 py-1 text-muted-foreground">{i + 1}</td>
+                                <td className="px-2 py-1">
+                                  <span className="font-mono font-bold">{seg.desde}</span>
+                                  <span className="text-muted-foreground text-[10px] ml-1 hidden sm:inline">
+                                    {seg.nombre_desde?.replace('Acopio ', '').replace('Hub ', '').replace('Supermercado ', '')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1">
+                                  <span className="font-mono font-bold">{seg.hasta}</span>
+                                  <span className="text-muted-foreground text-[10px] ml-1 hidden sm:inline">
+                                    {seg.nombre_hasta?.replace('Acopio ', '').replace('Hub ', '')}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-1 text-right font-bold text-purple-600 dark:text-purple-400">
+                                  {seg.distancia_km}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   )}
 
-                  {/* ── Gráfica de convergencia ───────────────────────────── */}
+                  {/* ── Convergencia ──────────────────────────────────── */}
                   {resultadoGA.historial_fitness?.length > 1 && (() => {
-                    const valores   = resultadoGA.historial_fitness;
-                    const valorMax  = Math.max(...valores);
-                    const valorMin  = Math.min(...valores);
-                    const paso      = Math.max(1, Math.floor(valores.length / 80));
-                    const muestras  = valores.filter((_, i) => i % paso === 0 || i === valores.length - 1);
+                    const valores  = resultadoGA.historial_fitness;
+                    const valorMax = Math.max(...valores);
+                    const valorMin = Math.min(...valores);
+                    const paso     = Math.max(1, Math.floor(valores.length / 80));
+                    const muestras = valores.filter((_, i) => i % paso === 0 || i === valores.length - 1);
                     return (
                       <div>
                         <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wide">
-                          Convergencia AG — fitness por generación (↓ decrece):
+                          Convergencia AG — distancia por generación (↓ decrece):
                         </p>
-                        <div className="flex items-end gap-px h-16 bg-purple-500/5 rounded-lg p-1">
+                        <div className="flex items-end gap-px h-14 bg-purple-500/5 rounded-lg p-1">
                           {muestras.map((val, i) => {
                             const altura = valorMax === valorMin ? 50 : ((val - valorMin) / (valorMax - valorMin)) * 100;
                             return (
                               <div
                                 key={i}
-                                className="flex-1 bg-purple-500/70 rounded-t transition-all"
+                                className="flex-1 bg-purple-500/70 rounded-t"
                                 style={{ height: `${Math.max(4, altura)}%` }}
-                                title={`Gen ${i * paso + 1}: ${val.toLocaleString('es-CO')}`}
+                                title={`Gen ${(i * paso + 1) * 10}: ${val.toFixed(1)} km`}
                               />
                             );
                           })}
                         </div>
                         <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5 px-1">
-                          <span>Gen 1: {valores[0].toLocaleString('es-CO')}</span>
-                          <span>Gen {valores.length}: {valores[valores.length - 1].toLocaleString('es-CO')}</span>
+                          <span>Gen 1: {valores[0].toFixed(1)} km</span>
+                          <span>Gen {valores.length * 10}: {valores[valores.length - 1].toFixed(1)} km</span>
                         </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* ── Cobertura de demanda ──────────────────────────────── */}
-                  {resultadoGA.cobertura_demanda?.length > 0 && (() => {
-                    const satisfechas   = resultadoGA.cobertura_demanda.filter(d => d.satisfecha).length;
-                    const totalDestinos = resultadoGA.cobertura_demanda.length;
-                    const hayHub        = resultadoGA.cobertura_hub?.length > 0;
-                    const datosHub      = (hayHub && !resultadoGA._verTodos)
-                      ? resultadoGA.cobertura_hub
-                      : resultadoGA.cobertura_demanda;
-                    const etiqueta      = (hayHub && !resultadoGA._verTodos)
-                      ? `Zona ${transitoGA} — ${resultadoGA.cobertura_hub.filter(d => d.satisfecha).length}/${resultadoGA.cobertura_hub.length} sat.`
-                      : `Red completa — ${satisfechas}/${totalDestinos} destinos satisfechos`;
-                    return (
-                      <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide flex items-center gap-2">
-                          <span>Cobertura de demanda</span>
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            satisfechas === totalDestinos
-                              ? 'bg-green-500/15 text-green-700 dark:text-green-400'
-                              : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-                          }`}>
-                            {etiqueta}
-                          </span>
-                        </p>
-                        <div className="max-h-36 overflow-y-auto space-y-0.5 rounded-lg border border-border/40">
-                          {datosHub.map((d, i) => (
-                            <div key={i} className={`flex items-center gap-2 text-xs px-2 py-1 ${
-                              d.satisfecha ? 'bg-green-500/8' : 'bg-amber-500/8'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${d.satisfecha ? 'bg-green-500' : 'bg-amber-400'}`} />
-                              <span className="font-mono font-bold w-8 shrink-0">{d.id}</span>
-                              <span className="text-muted-foreground text-[10px] flex-1 truncate">{d.nombre}</span>
-                              <span className={`font-bold shrink-0 ${d.satisfecha ? 'text-green-600 dark:text-green-400' : 'text-amber-600'}`}>
-                                {d.flujo_ag.toFixed(1)}/{d.demanda}t
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                        {hayHub && (
-                          <button
-                            className="mt-1.5 text-[10px] text-purple-600 dark:text-purple-400 hover:underline"
-                            onClick={() => setResultadoGA(prev => ({ ...prev, _verTodos: !prev._verTodos }))}
-                          >
-                            {resultadoGA._verTodos ? '▲ Ver solo zona hub' : `▼ Ver los ${totalDestinos} destinos`}
-                          </button>
-                        )}
                       </div>
                     );
                   })()}
 
                   <p className="text-[10px] text-muted-foreground text-center">
-                    Los flujos AG aparecen en morado en el mapa
+                    La ruta óptima aparece en morado punteado en el mapa
                   </p>
                 </div>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-center p-8 border border-dashed border-purple-500/20 rounded-xl bg-purple-500/5">
+                <div className="h-full flex flex-col items-center justify-center text-center p-8 border border-dashed border-purple-500/20 rounded-xl bg-purple-500/5 min-h-[240px]">
                   <Dna className="w-10 h-10 text-purple-500/40 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">
-                    Selecciona un hub de referencia y ejecuta el AG
+                    Selecciona un centro de acopio y ejecuta el AG
                   </p>
                   <p className="text-xs text-muted-foreground/70 mt-1">
-                    El AG optimiza flujos en la red completa y compara con el LP
+                    El AG calculará el orden óptimo de visita a sus supermercados (TSP)
                   </p>
                 </div>
               )}
@@ -949,6 +952,8 @@ const AcuicolaPanel = () => {
           </div>
         </CardContent>
       </Card>
+
+
     </div>
   );
 };
