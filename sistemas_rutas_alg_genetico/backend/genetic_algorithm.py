@@ -1,72 +1,48 @@
 """
-Algoritmo Genético para optimización de rutas.
-Implementa selección por torneo, cruce PMX y mutación por intercambio.
+Algoritmo Genético para optimización de rutas y flujos en la Red Acuícola.
+
+Contiene dos algoritmos:
+  1. algoritmo_genetico      — TSP para ordenar entregas locales de un hub.
+  2. algoritmo_genetico_flujos — AG sobre vector de flujos de la red completa.
+
+Operadores implementados:
+  - Selección por torneo (k=3)
+  - Cruce PMX para permutaciones (TSP) / Blend crossover BLX-α (flujos)
+  - Mutación por intercambio (TSP) / Mutación gaussiana clampada (flujos)
+  - Elitismo configurable
 """
 import random
+import time
 import numpy as np
 from fitness import calcular_fitness, evaluar_poblacion
 
 
+# ─── AG tipo TSP (distribución local desde un hub) ───────────────────────────
+
 def crear_individuo(n_paradas, punto_inicio_idx=0, punto_fin_idx=None):
-    """
-    Crea un individuo (ruta) aleatorio.
-    El punto de inicio siempre es fijo, las paradas intermedias se permutan.
-    
-    Args:
-        n_paradas: Número total de paradas (incluyendo inicio y fin)
-        punto_inicio_idx: Índice del punto de inicio (default: 0)
-        punto_fin_idx: Índice del punto final (default: None = último punto)
-    
-    Returns:
-        list: Ruta aleatoria
-    """
+    """Crea una ruta aleatoria con inicio y fin fijos."""
     if punto_fin_idx is None:
         punto_fin_idx = n_paradas - 1
-    
-    # Crear lista de paradas intermedias (sin inicio ni fin)
-    paradas_intermedias = list(range(n_paradas))
-    paradas_intermedias.remove(punto_inicio_idx)
-    if punto_fin_idx in paradas_intermedias:
-        paradas_intermedias.remove(punto_fin_idx)
-    
-    # Permutar aleatoriamente
-    random.shuffle(paradas_intermedias)
-    
-    # Construir ruta: inicio -> paradas_intermedias -> fin
-    ruta = [punto_inicio_idx] + paradas_intermedias + [punto_fin_idx]
-    return ruta
+    intermedias = list(range(n_paradas))
+    intermedias.remove(punto_inicio_idx)
+    if punto_fin_idx in intermedias:
+        intermedias.remove(punto_fin_idx)
+    random.shuffle(intermedias)
+    return [punto_inicio_idx] + intermedias + [punto_fin_idx]
 
 
 def crear_poblacion(tamano_poblacion, n_paradas, punto_inicio_idx=0, punto_fin_idx=None):
-    """
-    Crea una población inicial de rutas aleatorias.
-    
-    Args:
-        tamano_poblacion: Número de individuos en la población
-        n_paradas: Número total de paradas
-        punto_inicio_idx: Índice del punto de inicio
-        punto_fin_idx: Índice del punto final
-    
-    Returns:
-        list: Población de rutas
-    """
-    return [crear_individuo(n_paradas, punto_inicio_idx, punto_fin_idx) 
+    """Crea una población inicial de rutas aleatorias."""
+    return [crear_individuo(n_paradas, punto_inicio_idx, punto_fin_idx)
             for _ in range(tamano_poblacion)]
 
 
 def seleccion_torneo(poblacion, fitness_poblacion, k=3):
     """
-    Selección por torneo: elige k individuos al azar y retorna el mejor.
-    
-    Args:
-        poblacion: Lista de individuos
-        fitness_poblacion: Lista de fitness correspondiente
-        k: Tamaño del torneo
-    
-    Returns:
-        Individuo seleccionado
+    Selección por torneo: elige k individuos al azar y retorna el de menor fitness.
+    La presión selectiva (k) equilibra exploración vs. explotación.
     """
-    indices = random.sample(range(len(poblacion)), k)
+    indices   = random.sample(range(len(poblacion)), k)
     mejor_idx = min(indices, key=lambda i: fitness_poblacion[i])
     return poblacion[mejor_idx].copy()
 
@@ -74,87 +50,52 @@ def seleccion_torneo(poblacion, fitness_poblacion, k=3):
 def cruce_pmx(padre1, padre2):
     """
     Cruce PMX (Partially Mapped Crossover) para permutaciones.
-    Mantiene el primer y último elemento fijos.
-    
-    Args:
-        padre1: Primera ruta padre
-        padre2: Segunda ruta padre
-    
-    Returns:
-        tuple: (hijo1, hijo2)
+    Mantiene inicio y fin fijos; solo permuta paradas intermedias.
+    PMX preserva la legalidad de la permutación (sin repeticiones).
     """
-    size = len(padre1)
-    
-    # Mantener inicio y fin fijos
     inicio = padre1[0]
-    fin = padre1[-1]
-    
-    # Trabajar solo con paradas intermedias
-    p1_intermedio = padre1[1:-1]
-    p2_intermedio = padre2[1:-1]
-    
-    if len(p1_intermedio) < 2:
-        # Si hay muy pocas paradas intermedias, retornar copias
+    fin    = padre1[-1]
+    p1_int = padre1[1:-1]
+    p2_int = padre2[1:-1]
+
+    if len(p1_int) < 2:
         return padre1.copy(), padre2.copy()
-    
-    # Elegir dos puntos de cruce aleatorios
-    size_intermedio = len(p1_intermedio)
-    punto1 = random.randint(0, size_intermedio - 1)
-    punto2 = random.randint(punto1 + 1, size_intermedio)
-    
-    # Crear hijos con segmento intercambiado
-    hijo1_intermedio = [None] * size_intermedio
-    hijo2_intermedio = [None] * size_intermedio
-    
-    # Copiar segmento del otro padre
-    hijo1_intermedio[punto1:punto2] = p2_intermedio[punto1:punto2]
-    hijo2_intermedio[punto1:punto2] = p1_intermedio[punto1:punto2]
-    
-    # Mapeo para evitar duplicados
-    def llenar_hijo(hijo, padre_principal, padre_secundario):
-        for i in range(size_intermedio):
+
+    size_int = len(p1_int)
+    pt1 = random.randint(0, size_int - 1)
+    pt2 = random.randint(pt1 + 1, size_int)
+
+    hijo1 = [None] * size_int
+    hijo2 = [None] * size_int
+    hijo1[pt1:pt2] = p2_int[pt1:pt2]
+    hijo2[pt1:pt2] = p1_int[pt1:pt2]
+
+    def llenar(hijo, padre_main, padre_sec):
+        for i in range(size_int):
             if hijo[i] is None:
-                candidato = padre_principal[i]
-                while candidato in hijo:
-                    # Buscar el mapeo
-                    idx = padre_secundario.index(candidato)
-                    candidato = padre_principal[idx]
-                hijo[i] = candidato
+                cand = padre_main[i]
+                while cand in hijo:
+                    idx  = padre_sec.index(cand)
+                    cand = padre_main[idx]
+                hijo[i] = cand
         return hijo
-    
-    hijo1_intermedio = llenar_hijo(hijo1_intermedio, p1_intermedio, p2_intermedio)
-    hijo2_intermedio = llenar_hijo(hijo2_intermedio, p2_intermedio, p1_intermedio)
-    
-    # Reconstruir rutas completas
-    hijo1 = [inicio] + hijo1_intermedio + [fin]
-    hijo2 = [inicio] + hijo2_intermedio + [fin]
-    
-    return hijo1, hijo2
+
+    h1 = llenar(hijo1, p1_int, p2_int)
+    h2 = llenar(hijo2, p2_int, p1_int)
+    return [inicio] + h1 + [fin], [inicio] + h2 + [fin]
 
 
 def mutacion_intercambio(individuo, tasa_mutacion=0.1):
     """
-    Mutación por intercambio: intercambia dos paradas intermedias con cierta probabilidad.
-    No muta el punto de inicio ni el final.
-
-    Args:
-        individuo: Ruta a mutar
-        tasa_mutacion: Probabilidad de mutación
-
-    Returns:
-        Individuo mutado
+    Mutación por intercambio de dos paradas intermedias.
+    Solo actúa sobre índices interiores para preservar inicio y fin.
     """
-    if random.random() < tasa_mutacion:
-        # Solo mutar paradas intermedias (índices 1 a n-2)
-        if len(individuo) > 3:  # Necesitamos al menos 2 paradas intermedias
-            idx1 = random.randint(1, len(individuo) - 2)
-            # Garantizar que idx2 sea diferente a idx1 para producir un cambio real
-            idx2 = random.randint(1, len(individuo) - 3)
-            if idx2 >= idx1:
-                idx2 += 1
-            # Intercambiar
-            individuo[idx1], individuo[idx2] = individuo[idx2], individuo[idx1]
-
+    if random.random() < tasa_mutacion and len(individuo) > 3:
+        idx1 = random.randint(1, len(individuo) - 2)
+        idx2 = random.randint(1, len(individuo) - 3)
+        if idx2 >= idx1:
+            idx2 += 1
+        individuo[idx1], individuo[idx2] = individuo[idx2], individuo[idx1]
     return individuo
 
 
@@ -167,193 +108,194 @@ def algoritmo_genetico(
     tasa_cruce=0.8,
     tasa_mutacion=0.15,
     elitismo=2,
-    verbose=True
+    seed=None,
+    verbose=True,
 ):
     """
-    Ejecuta el algoritmo genético para optimizar una ruta.
-    
+    AG para optimizar el orden de entrega a supermercados desde un hub (TSP).
+
     Args:
-        matriz_distancias: Matriz NxN con distancias entre puntos
-        punto_inicio_idx: Índice del punto de inicio
-        punto_fin_idx: Índice del punto final (None = último)
-        tamano_poblacion: Tamaño de la población
-        generaciones: Número de generaciones a evolucionar
-        tasa_cruce: Probabilidad de cruce
-        tasa_mutacion: Probabilidad de mutación
-        elitismo: Número de mejores individuos a preservar
-        verbose: Imprimir progreso
-    
+        matriz_distancias: Matriz NxN con distancias (km) entre paradas.
+        punto_inicio_idx:  Índice del depósito (hub de tránsito).
+        punto_fin_idx:     Índice del punto final (None = depósito, ciclo).
+        tamano_poblacion:  Individuos por generación.
+        generaciones:      Número de iteraciones evolutivas.
+        tasa_cruce:        Probabilidad de cruce PMX por pareja.
+        tasa_mutacion:     Probabilidad de intercambio por individuo.
+        elitismo:          Individuos élite copiados sin cambio.
+        seed:              Semilla aleatoria para reproducibilidad.
+        verbose:           Imprime progreso cada 20 generaciones.
+
     Returns:
-        dict: {
-            'mejor_ruta': mejor ruta encontrada,
-            'mejor_fitness': fitness de la mejor ruta,
-            'historial_fitness': lista con el mejor fitness de cada generación
-        }
+        dict con mejor_ruta, mejor_fitness, historial_fitness, historial_detallado,
+        tiempo_ms (tiempo de ejecución total en milisegundos).
     """
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
+    t_inicio = time.perf_counter()
+
     n_paradas = matriz_distancias.shape[0]
-    
     if punto_fin_idx is None:
         punto_fin_idx = n_paradas - 1
-    
-    # Crear población inicial
-    poblacion = crear_poblacion(tamano_poblacion, n_paradas, punto_inicio_idx, punto_fin_idx)
-    
-    historial_fitness = []
-    mejor_global = None
-    mejor_fitness_global = float('inf')
-    historial_detallado = []  # NUEVO: historial con detalles de cada generación
-    
-    for generacion in range(generaciones):
-        # Evaluar fitness
-        fitness_poblacion = evaluar_poblacion(poblacion, matriz_distancias)
-        
-        # Encontrar el mejor de esta generación
-        mejor_idx = np.argmin(fitness_poblacion)
-        mejor_fitness = fitness_poblacion[mejor_idx]
-        peor_fitness = np.max(fitness_poblacion)
-        promedio_fitness = np.mean(fitness_poblacion)
-        
-        historial_fitness.append(mejor_fitness)
-        
-        # Guardar información detallada de esta generación
-        info_generacion = {
-            'generacion': generacion,
-            'mejor_fitness': float(mejor_fitness),
-            'peor_fitness': float(peor_fitness),
-            'promedio_fitness': float(promedio_fitness),
-            'mejor_ruta': poblacion[mejor_idx].copy(),
-            'ejemplos_torneo': [],
-            'ejemplos_cruce': [],
-            'ejemplos_mutacion': []
-        }
-        
-        # Actualizar mejor global
-        if mejor_fitness < mejor_fitness_global:
-            mejor_fitness_global = mejor_fitness
-            mejor_global = poblacion[mejor_idx].copy()
-        
-        if verbose and generacion % 20 == 0:
-            print(f"      Gen {generacion:3d}: Mejor fitness = {mejor_fitness:.2f} m")
-        
-        # Crear nueva población
-        nueva_poblacion = []
-        
-        # Elitismo: preservar los mejores
-        indices_elite = np.argsort(fitness_poblacion)[:elitismo]
-        for idx in indices_elite:
-            nueva_poblacion.append(poblacion[idx].copy())
-        
-        # Generar resto de la población
-        ejemplos_registrados = {'torneo': 0, 'cruce': 0, 'mutacion': 0}
-        
-        while len(nueva_poblacion) < tamano_poblacion:
-            # Selección
-            padre1 = seleccion_torneo(poblacion, fitness_poblacion)
-            padre2 = seleccion_torneo(poblacion, fitness_poblacion)
-            
-            # Registrar ejemplos de torneo (solo primeros 3)
-            if ejemplos_registrados['torneo'] < 3:
-                info_generacion['ejemplos_torneo'].append({
-                    'padre1': padre1[:min(7, len(padre1))],
-                    'padre2': padre2[:min(7, len(padre2))]
-                })
-                ejemplos_registrados['torneo'] += 1
-            
-            # Cruce
-            if random.random() < tasa_cruce:
-                hijo1, hijo2 = cruce_pmx(padre1, padre2)
-                
-                # Registrar ejemplos de cruce (solo primeros 3)
-                if ejemplos_registrados['cruce'] < 3:
-                    info_generacion['ejemplos_cruce'].append({
-                        'padre1': padre1[:min(7, len(padre1))],
-                        'padre2': padre2[:min(7, len(padre2))],
-                        'hijo1': hijo1[:min(7, len(hijo1))],
-                        'hijo2': hijo2[:min(7, len(hijo2))]
-                    })
-                    ejemplos_registrados['cruce'] += 1
-            else:
-                hijo1, hijo2 = padre1.copy(), padre2.copy()
-            
-            # Guardar estado antes de mutación
-            hijo1_antes = hijo1.copy()
-            hijo2_antes = hijo2.copy()
-            
-            # Mutación
-            hijo1 = mutacion_intercambio(hijo1, tasa_mutacion)
-            hijo2 = mutacion_intercambio(hijo2, tasa_mutacion)
-            
-            # Registrar ejemplos de mutación (solo si hubo mutación y solo primeros 3)
-            if ejemplos_registrados['mutacion'] < 3:
-                if hijo1 != hijo1_antes:
-                    info_generacion['ejemplos_mutacion'].append({
-                        'antes': hijo1_antes[:min(7, len(hijo1_antes))],
-                        'despues': hijo1[:min(7, len(hijo1))]
-                    })
-                    ejemplos_registrados['mutacion'] += 1
-                elif hijo2 != hijo2_antes and ejemplos_registrados['mutacion'] < 3:
-                    info_generacion['ejemplos_mutacion'].append({
-                        'antes': hijo2_antes[:min(7, len(hijo2_antes))],
-                        'despues': hijo2[:min(7, len(hijo2))]
-                    })
-                    ejemplos_registrados['mutacion'] += 1
-            
-            nueva_poblacion.append(hijo1)
-            if len(nueva_poblacion) < tamano_poblacion:
-                nueva_poblacion.append(hijo2)
 
-        poblacion = nueva_poblacion
-        historial_detallado.append(info_generacion)
-    
+    poblacion = crear_poblacion(tamano_poblacion, n_paradas, punto_inicio_idx, punto_fin_idx)
+
+    historial_fitness   = []
+    historial_detallado = []
+    mejor_global        = None
+    mejor_fitness_global = float('inf')
+
+    for gen in range(generaciones):
+        fitness_pob = evaluar_poblacion(poblacion, matriz_distancias)
+
+        mejor_idx = int(np.argmin(fitness_pob))
+        mejor_fit = fitness_pob[mejor_idx]
+        historial_fitness.append(mejor_fit)
+
+        info_gen = {
+            'generacion':       gen,
+            'mejor_fitness':    float(mejor_fit),
+            'peor_fitness':     float(np.max(fitness_pob)),
+            'promedio_fitness': float(np.mean(fitness_pob)),
+            'mejor_ruta':       poblacion[mejor_idx].copy(),
+            'ejemplos_torneo':  [],
+            'ejemplos_cruce':   [],
+            'ejemplos_mutacion': [],
+        }
+
+        if mejor_fit < mejor_fitness_global:
+            mejor_fitness_global = mejor_fit
+            mejor_global         = poblacion[mejor_idx].copy()
+
+        if verbose and gen % 20 == 0:
+            print(f"      Gen {gen:3d}: {mejor_fit:.2f} km")
+
+        # Nueva generación
+        nueva_pob = [poblacion[i].copy() for i in np.argsort(fitness_pob)[:elitismo]]
+        contadores = {'torneo': 0, 'cruce': 0, 'mutacion': 0}
+
+        while len(nueva_pob) < tamano_poblacion:
+            p1 = seleccion_torneo(poblacion, fitness_pob)
+            p2 = seleccion_torneo(poblacion, fitness_pob)
+
+            if contadores['torneo'] < 3:
+                info_gen['ejemplos_torneo'].append({'padre1': p1[:7], 'padre2': p2[:7]})
+                contadores['torneo'] += 1
+
+            if random.random() < tasa_cruce:
+                h1, h2 = cruce_pmx(p1, p2)
+                if contadores['cruce'] < 3:
+                    info_gen['ejemplos_cruce'].append({
+                        'padre1': p1[:7], 'padre2': p2[:7],
+                        'hijo1': h1[:7], 'hijo2': h2[:7],
+                    })
+                    contadores['cruce'] += 1
+            else:
+                h1, h2 = p1.copy(), p2.copy()
+
+            h1_ant, h2_ant = h1.copy(), h2.copy()
+            h1 = mutacion_intercambio(h1, tasa_mutacion)
+            h2 = mutacion_intercambio(h2, tasa_mutacion)
+
+            if contadores['mutacion'] < 3:
+                for antes, despues in [(h1_ant, h1), (h2_ant, h2)]:
+                    if antes != despues and contadores['mutacion'] < 3:
+                        info_gen['ejemplos_mutacion'].append(
+                            {'antes': antes[:7], 'despues': despues[:7]}
+                        )
+                        contadores['mutacion'] += 1
+
+            nueva_pob.append(h1)
+            if len(nueva_pob) < tamano_poblacion:
+                nueva_pob.append(h2)
+
+        poblacion = nueva_pob
+        historial_detallado.append(info_gen)
+
     # Evaluación final
-    fitness_poblacion = evaluar_poblacion(poblacion, matriz_distancias)
-    mejor_idx = np.argmin(fitness_poblacion)
-    
-    if fitness_poblacion[mejor_idx] < mejor_fitness_global:
-        mejor_global = poblacion[mejor_idx].copy()
-        mejor_fitness_global = fitness_poblacion[mejor_idx]
-    
+    fitness_pob = evaluar_poblacion(poblacion, matriz_distancias)
+    mejor_idx   = int(np.argmin(fitness_pob))
+    if fitness_pob[mejor_idx] < mejor_fitness_global:
+        mejor_global         = poblacion[mejor_idx].copy()
+        mejor_fitness_global = fitness_pob[mejor_idx]
+
+    tiempo_ms = round((time.perf_counter() - t_inicio) * 1000, 2)
+
     if verbose:
-        print(f"      ✅ Algoritmo genético finalizado")
-        print(f"      📊 Mejor fitness: {mejor_fitness_global:.2f} m")
+        print(f"      ✅ AG (TSP) — Mejor: {mejor_fitness_global:.2f} km en {tiempo_ms} ms")
 
     return {
-        'mejor_ruta': mejor_global,
-        'mejor_fitness': mejor_fitness_global,
-        'historial_fitness': historial_fitness,
-        'historial_detallado': historial_detallado  # NUEVO: información detallada
+        'mejor_ruta':          mejor_global,
+        'mejor_fitness':       mejor_fitness_global,
+        'historial_fitness':   historial_fitness,
+        'historial_detallado': historial_detallado,
+        'tiempo_ms':           tiempo_ms,
     }
 
 
-# ─── Algoritmo Genético basado en Flujos de Red ──────────────────────────────
+# ─── AG tipo Flujos (red completa) ───────────────────────────────────────────
 
 def _costo_transporte_cromosoma(cromosoma, aristas):
-    """Transport cost only (without penalties) for LP comparison."""
+    """Costo de transporte puro del cromosoma (sin penalizaciones)."""
     return sum(
         cromosoma[i] * float(a['distancia_km']) * float(a['costo_por_ton_km'])
         for i, a in enumerate(aristas)
     )
 
 
-def _calcular_fitness_flujo(cromosoma, aristas, nodos_dict, penalizacion):
+def _calcular_fitness_flujo(cromosoma, aristas, nodos_dict, penalizacion,
+                             umbral_calidad=0.70):
     """
-    Fitness = costo transporte + penalización por demanda incumplida + penalización por oferta excedida.
-    La capacidad se respeta por construcción (mutación y cruce clampean valores).
+    Función de fitness para un cromosoma de flujos.
+
+    fitness = costo_transporte + pen_demanda + pen_oferta + pen_calidad
+
+    Componentes de penalización (todas × penalizacion, un valor alto ej. 100_000):
+
+    pen_demanda:
+        Por cada ton que un supermercado recibe de más o de menos respecto a su
+        demanda exacta. Se penaliza el valor absoluto del desvío porque tanto el
+        exceso (merma, devoluciones) como el déficit (cliente insatisfecho, multa
+        contractual) son costos reales.
+
+    pen_oferta:
+        Por cada ton que un origen despacha por encima de su capacidad productiva.
+        Despacharlo sería físicamente imposible, por lo que el cromosoma que lo
+        propone es inviable y debe quedar muy abajo en el ranking.
+
+    pen_calidad:
+        Si un nodo de tránsito tiene calidad por debajo del umbral, el flujo que
+        pasa por él tiene alta probabilidad de rechazo en el supermercado destino.
+        Penalizamos proporcionalmente al déficit de calidad × flujo afectado.
+        Esto modela el riesgo económico: un lote rechazado genera devoluciones,
+        costos de transporte doble y pérdida del precio de venta pactado.
+
+    Returns:
+        float — costo total penalizado (menor es mejor).
     """
     costo = _costo_transporte_cromosoma(cromosoma, aristas)
 
     entrada = {}
     salida  = {}
     for i, a in enumerate(aristas):
-        salida[a['origen']]   = salida.get(a['origen'], 0.0)   + cromosoma[i]
+        salida[a['origen']]   = salida.get(a['origen'],   0.0) + cromosoma[i]
         entrada[a['destino']] = entrada.get(a['destino'], 0.0) + cromosoma[i]
 
+    # ── Penalización de demanda incumplida ────────────────────────────────────
+    # Se usa |recibido − demanda| porque el LP exige satisfacción EXACTA.
+    # Cualquier desvío implica incumplimiento contractual con el supermercado.
     pen_demanda = 0.0
     for nid, nodo in nodos_dict.items():
         if nodo.get('tipo') == 'destino':
             dem = float(nodo.get('demanda', 0))
             pen_demanda += penalizacion * abs(entrada.get(nid, 0.0) - dem)
 
+    # ── Penalización de oferta excedida ───────────────────────────────────────
+    # No se puede despachar más de lo que existe en el estanque/granja.
+    # El exceso es físicamente inviable → penalización severa para eliminar
+    # estos cromosomas del pool evolutivo.
     pen_oferta = 0.0
     for nid, nodo in nodos_dict.items():
         if nodo.get('tipo') == 'origen':
@@ -361,7 +303,22 @@ def _calcular_fitness_flujo(cromosoma, aristas, nodos_dict, penalizacion):
             exceso = max(0.0, salida.get(nid, 0.0) - oferta)
             pen_oferta += penalizacion * exceso
 
-    return costo + pen_demanda + pen_oferta
+    # ── Penalización de calidad en centros de acopio ─────────────────────────
+    # Si calidad_t < umbral, la carne procesada en ese nodo tiene riesgo de
+    # rechazo en los supermercados. Penalizamos en proporción al:
+    #   (déficit_de_calidad / umbral) × flujo_afectado × 0.5 × penalizacion
+    # El factor 0.5 refleja que no todo lote con calidad baja es rechazado,
+    # sino que aumenta la probabilidad de rechazo proporcionalmente al déficit.
+    pen_calidad = 0.0
+    for i, a in enumerate(aristas):
+        nodo_orig = nodos_dict.get(a['origen'], {})
+        if nodo_orig.get('tipo') == 'transito':
+            calidad = float(nodo_orig.get('calidad', 1.0))
+            if calidad < umbral_calidad:
+                deficit   = (umbral_calidad - calidad) / umbral_calidad
+                pen_calidad += penalizacion * 0.5 * deficit * cromosoma[i]
+
+    return costo + pen_demanda + pen_oferta + pen_calidad
 
 
 def algoritmo_genetico_flujos(
@@ -371,39 +328,57 @@ def algoritmo_genetico_flujos(
     tasa_cruce=0.8,
     tasa_mutacion=0.15,
     elitismo=2,
-    penalizacion=100000.0,
+    penalizacion=100_000.0,
     sigma_mutacion=0.15,
+    umbral_calidad=0.70,
+    seed=None,
     verbose=False,
 ):
     """
-    Algoritmo Genético basado en flujos para optimización de la red completa.
+    AG para optimizar los flujos en la red completa.
 
-    Cromosoma: vector real [x_1, ..., x_m], una variable por arista del grafo.
+    Cromosoma: vector real [x_1, …, x_m], una variable por arista del grafo.
+    Cada gen x_i ∈ [0, cap_i] representa las toneladas enviadas por esa arista.
+
     Operadores:
-      - Selección: torneo de tamaño 3
-      - Cruce: aritmético con alpha aleatorio (blend crossover)
-      - Mutación: perturbación gaussiana clampada en [0, capacidad]
-    Fitness: costo transporte + penalización demanda incumplida + penalización oferta excedida.
+      - Selección: torneo de tamaño 3.
+      - Cruce: BLX-α (Blend Crossover con α aleatorio ∈ [0,1]) para diversidad.
+        Un α aleatorio en cada cruce evita convergencia prematura al punto medio.
+      - Mutación: perturbación gaussiana σ = sigma_mutacion × capacidad, clampada
+        en [0, cap] para garantizar factibilidad de capacidad por construcción.
+      - Elitismo: los `elitismo` mejores individuos pasan intactos.
+
+    Función de fitness: ver _calcular_fitness_flujo() — incluye penalizaciones
+    por demanda incumplida, oferta excedida y calidad baja en tránsito.
 
     Args:
-        red              -- dict de la red con 'nodos' y 'aristas'
-        tamano_poblacion -- tamaño de la población
-        generaciones     -- número de generaciones
-        tasa_cruce       -- probabilidad de cruce por pareja
-        tasa_mutacion    -- probabilidad de mutación por gen
-        elitismo         -- individuos élite conservados sin cambio
-        penalizacion     -- factor de penalización por violación de restricciones
-        sigma_mutacion   -- desviación estándar gaussiana como fracción de la capacidad
-        verbose          -- imprime progreso cada 20 generaciones
+        red:              dict con 'nodos' y 'aristas'.
+        tamano_poblacion: individuos por generación.
+        generaciones:     iteraciones evolutivas.
+        tasa_cruce:       probabilidad de cruce BLX-α por pareja.
+        tasa_mutacion:    probabilidad de mutación por gen.
+        elitismo:         individuos élite conservados sin cambio.
+        penalizacion:     factor de penalización por violación de restricciones.
+        sigma_mutacion:   desviación gaussiana como fracción de la capacidad.
+        umbral_calidad:   calidad mínima aceptable para nodos de tránsito.
+        seed:             semilla para reproducibilidad de resultados.
+        verbose:          imprime progreso cada 20 generaciones.
 
     Returns:
-        dict con 'mejor_cromosoma', 'costo_transporte', 'historial_fitness', 'historial_costo'
+        dict con mejor_cromosoma, costo_transporte, historial_fitness,
+        historial_costo, tiempo_ms.
     """
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
+    t_inicio = time.perf_counter()
+
     aristas    = red['aristas']
     nodos_dict = {n['id']: n for n in red['nodos']}
     caps       = [float(a['capacidad_ton']) for a in aristas]
 
-    # ── Población inicial aleatoria dentro de [0, cap] ────────────────────────
+    # Población inicial: cada gen uniforme ∈ [0, cap_e]
     poblacion = [
         [random.uniform(0.0, cap) for cap in caps]
         for _ in range(tamano_poblacion)
@@ -417,7 +392,7 @@ def algoritmo_genetico_flujos(
 
     for gen in range(generaciones):
         fitnesses = [
-            _calcular_fitness_flujo(ind, aristas, nodos_dict, penalizacion)
+            _calcular_fitness_flujo(ind, aristas, nodos_dict, penalizacion, umbral_calidad)
             for ind in poblacion
         ]
 
@@ -441,21 +416,21 @@ def algoritmo_genetico_flujos(
         nueva_pob = [poblacion[i].copy() for i in elite_idx]
 
         def _torneo():
-            candidatos = random.sample(range(len(poblacion)), min(3, len(poblacion)))
-            return poblacion[min(candidatos, key=lambda i: fitnesses[i])].copy()
+            cands = random.sample(range(len(poblacion)), min(3, len(poblacion)))
+            return poblacion[min(cands, key=lambda i: fitnesses[i])].copy()
 
         while len(nueva_pob) < tamano_poblacion:
             p1, p2 = _torneo(), _torneo()
 
-            # Cruce aritmético (blend)
             if random.random() < tasa_cruce:
-                alpha = 0.5  # blend crossover con alpha fijo = 0.5
-                h1 = [alpha * a + (1 - alpha) * b for a, b in zip(p1, p2)]
-                h2 = [(1 - alpha) * a + alpha * b for a, b in zip(p1, p2)]
+                # BLX-α con α aleatorio: evita convergencia prematura al punto
+                # medio que ocurría con alpha fijo = 0.5
+                alpha = random.random()
+                h1 = [alpha * a + (1.0 - alpha) * b for a, b in zip(p1, p2)]
+                h2 = [(1.0 - alpha) * a + alpha * b for a, b in zip(p1, p2)]
             else:
-                h1, h2 = p1, p2
+                h1, h2 = p1[:], p2[:]
 
-            # Mutación gaussiana clampada
             def _mutar(ind):
                 for i, cap in enumerate(caps):
                     if random.random() < tasa_mutacion:
@@ -471,7 +446,7 @@ def algoritmo_genetico_flujos(
 
     # Evaluación final
     fitnesses = [
-        _calcular_fitness_flujo(ind, aristas, nodos_dict, penalizacion)
+        _calcular_fitness_flujo(ind, aristas, nodos_dict, penalizacion, umbral_calidad)
         for ind in poblacion
     ]
     mejor_idx = int(np.argmin(fitnesses))
@@ -480,12 +455,15 @@ def algoritmo_genetico_flujos(
         mejor_fit_global   = fitnesses[mejor_idx]
         mejor_costo_global = _costo_transporte_cromosoma(mejor_global, aristas)
 
+    tiempo_ms = round((time.perf_counter() - t_inicio) * 1000, 2)
+
     if verbose:
-        print(f"      ✅ AG Flujos finalizado — Costo: {mejor_costo_global:.2f} KCOP")
+        print(f"      ✅ AG Flujos — Costo: {mejor_costo_global:.2f} KCOP en {tiempo_ms} ms")
 
     return {
         'mejor_cromosoma':   mejor_global,
         'costo_transporte':  round(mejor_costo_global, 2),
         'historial_fitness': historial_fitness,
         'historial_costo':   historial_costo,
+        'tiempo_ms':         tiempo_ms,
     }

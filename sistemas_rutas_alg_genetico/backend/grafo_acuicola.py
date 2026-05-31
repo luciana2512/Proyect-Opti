@@ -535,7 +535,7 @@ def _haversine(lat1, lon1, lat2, lon2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-def optimizar_distribucion_local(transito_id, red=None,
+def optimizar_distribucion_local(transito_id, red=None, seed=None,
                                   tamano_poblacion=80, generaciones=150,
                                   tasa_cruce=0.8, tasa_mutacion=0.15, elitismo=2):
     """
@@ -587,6 +587,7 @@ def optimizar_distribucion_local(transito_id, red=None,
         generaciones=generaciones,
         tasa_cruce=tasa_cruce,
         tasa_mutacion=tasa_mutacion,
+        seed=seed,
         elitismo=elitismo,
         verbose=False
     )
@@ -613,6 +614,7 @@ def optimizar_distribucion_local(transito_id, red=None,
         'orden_optimizado':  ruta_nombres,
         'ruta_detalle':      ruta_detalle,
         'distancia_total_km': round(resultado_ga['mejor_fitness'], 2),
+        'tiempo_ms':          resultado_ga.get('tiempo_ms', 0),
         'historial_fitness':  [round(f, 2) for f in resultado_ga['historial_fitness'][::10]],
         'parametros_ga': {
             'tamano_poblacion': tamano_poblacion,
@@ -626,7 +628,7 @@ def optimizar_distribucion_local(transito_id, red=None,
 
 # ─── Optimización de flujos en la red completa con AG ────────────────────────
 
-def optimizar_ag_flujos_red(transito_id=None, red=None,
+def optimizar_ag_flujos_red(transito_id=None, red=None, seed=None,
                               tamano_poblacion=80, generaciones=150,
                               tasa_cruce=0.8, tasa_mutacion=0.15, elitismo=2):
     """
@@ -670,6 +672,7 @@ def optimizar_ag_flujos_red(transito_id=None, red=None,
         generaciones=generaciones,
         tasa_cruce=tasa_cruce,
         tasa_mutacion=tasa_mutacion,
+        seed=seed,
         elitismo=elitismo,
         verbose=False,
     )

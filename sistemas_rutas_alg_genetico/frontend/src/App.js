@@ -22,7 +22,9 @@ const TABS = [
 ];
 
 function App() {
-  const [tabActiva, setTabActiva] = useState('red');
+  const [tabActiva,   setTabActiva]   = useState('red');
+  const [origenRuta,  setOrigenRuta]  = useState('O1');
+  const [destinoRuta, setDestinoRuta] = useState('D1');
 
   return (
     <Router>
@@ -81,8 +83,14 @@ function App() {
 
         {/* ── Contenido ──────────────────────────────────────────────── */}
         <main className="max-w-[1400px] mx-auto px-6 py-6">
-          {tabActiva === 'red'          && <AcuicolaPanel />}
-          {tabActiva === 'sensibilidad' && <SensibilidadPanel />}
+          {tabActiva === 'red'          && <AcuicolaPanel
+            origenRuta={origenRuta}   setOrigenRuta={setOrigenRuta}
+            destinoRuta={destinoRuta} setDestinoRuta={setDestinoRuta}
+          />}
+          {tabActiva === 'sensibilidad' && <SensibilidadPanel
+            origenRuta={origenRuta}
+            destinoRuta={destinoRuta}
+          />}
         </main>
 
         {/* ── Footer ─────────────────────────────────────────────────── */}

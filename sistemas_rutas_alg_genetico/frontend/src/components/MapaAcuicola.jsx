@@ -117,6 +117,7 @@ const MapaAcuicola = ({
   distribucionGA = null,
   flujos_ag      = {},
   geometriaRuta  = [],
+  geometriaRutaGA = [],
 }) => {
   const [capas,   setCapas]   = useState({ inactivas: true, activas: true, optima: true, ga: true });
   const [animando, setAnimando] = useState(false);
@@ -246,8 +247,10 @@ const MapaAcuicola = ({
   })();
   const usandoOSM = geometriaRuta.length > 2;
 
-  // Ruta GA TSP local (legado)
-  const puntosGA = distribucionGA?.ruta_detalle
+  // Ruta GA TSP — usa geometría OSRM si está disponible, sino líneas rectas
+  const puntosGA = geometriaRutaGA.length > 2
+    ? geometriaRutaGA
+    : distribucionGA?.ruta_detalle
     ? (() => {
         const pts = distribucionGA.ruta_detalle.map(seg => {
           const n = nodoMap[seg.desde]; return n ? [n.lat, n.lon] : null;
@@ -393,10 +396,14 @@ const MapaAcuicola = ({
             />
           )}
 
-          {/* ── Ruta GA TSP local (morado, legado) ─── */}
+          {/* ── Ruta GA TSP (morado — OSRM si disponible, recta como fallback) ─── */}
           {capas.ga && puntosGA.length > 1 && (
             <Polyline positions={puntosGA}
-              pathOptions={{ color: '#a855f7', weight: 4, opacity: 0.9, dashArray: '8 4' }} />
+              pathOptions={{
+                color: '#a855f7', weight: 5, opacity: 0.95,
+                dashArray: geometriaRutaGA.length > 2 ? undefined : '8 4',
+                lineJoin: 'round', lineCap: 'round',
+              }} />
           )}
 
           {/* ── Flujos AG red completa (morado punteado, OSRM) ─── */}
@@ -432,6 +439,8 @@ const MapaAcuicola = ({
               </Popup>
             </Polyline>
           ))}
+
+
 
           {/* ── Camión animado ─── */}
           {animando && puntosRuta.length > 1 && <AnimacionCamion puntos={puntosRuta} />}
