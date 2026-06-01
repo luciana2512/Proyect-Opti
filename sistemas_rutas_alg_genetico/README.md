@@ -16,6 +16,35 @@ Sistema de optimización de la red logística de distribución de pescado de la 
 
 ---
 
+## Cambios recientes (31‑May‑2026)
+
+- Se añadió `backend/ag_ruta_comparativa.py`: nuevo módulo `Path AG` que implementa
+  un Algoritmo Genético de rutas (codificación por camino) para comparar resultados
+  con Dijkstra y la solución de Programación Lineal. El AG exige pasar por al
+  menos un centro de acopio y aplica penalizaciones por rutas inválidas o exceso
+  de carga.
+- Se añadió `backend/main.py`: script/punto de entrada con utilidades para ejecutar
+  comparativas y tareas de consola (scripts de evaluación y pruebas).
+- Refactor en backend: `modelo_pl.py`, `grafo_acuicola.py` y `api_rutas_reales.py`
+  fueron actualizados para exponer funciones más modulares y soportar la
+  comparativa AG vs LP/Dijkstra.
+- Frontend: ajustes en componentes `AcuicolaPanel`, `MapaAcuicola` y
+  `SensibilidadPanel` para integrar la comparativa y mostrar historial de fitness.
+
+Uso rápido de la comparativa:
+
+- Desde Python puedes importar y ejecutar la función principal:
+
+```py
+from backend.ag_ruta_comparativa import ejecutar_comparativa_ag
+res = ejecutar_comparativa_ag('O1', 'D15')
+print(res['mejor_camino'], res['costo_total'])
+```
+
+- También existe `backend/main.py` con utilidades para correr evaluaciones por
+  lotes y generar reportes; revisa el archivo para opciones disponibles.
+
+
 ## Estructura de la Red
 
 | Tipo | Cantidad | Descripción |
@@ -122,6 +151,8 @@ backend/
 ├── analisis_sensibilidad.py  3 escenarios What-If
 ├── genetic_algorithm.py      Algoritmo Genético (torneo, PMX, mutación)
 ├── fitness.py                Función de aptitud del AG
+├── ag_ruta_comparativa.py    Algoritmo Genético `Path AG` — comparativa con Dijkstra/LP
+└── main.py                   Script / punto de entrada para ejecutar comparativas y utilidades
 └── red_acuicola.json         Datos de la red (nodos, aristas, coordenadas)
 
 frontend/src/
@@ -198,6 +229,24 @@ Parámetros por defecto (configurables desde la interfaz):
 | Elitismo | 2 |
 
 ---
+
+### Path AG — Comparativa de rutas
+
+Se implementó una variante del AG orientada a encontrar caminos (no solo permutaciones):
+
+- **Representación:** lista de nodos que forman el camino: `[origen, T_i, ..., destino]`.
+- **Restricciones:** debe empezar en el origen, terminar en el destino y pasar por al
+  menos un nodo de tipo `transito` (centro de acopio).
+- **Operadores:** torneo (k=3), cruce por nodo común (Path Crossover) y mutaciones
+  por inserción/sustitución de tránsito o reemplazo completo.
+- **Fitness (menor es mejor):** `costo_ruta + penalizaciones` donde las penalizaciones
+  incluyen inicio/fin incorrectos, ausencia de tránsito, aristas inexistentes y exceso
+  de demanda frente a la capacidad (factor de penalización grande para descartar
+  soluciones inviables).
+
+Esta variante permite comparar de forma directa la solución heurística con rutas exactas
+obtenidas por Dijkstra o el modelo LP, y se usa para generar los historiales de
+convergencia que se muestran en la interfaz.
 
 ## Solución de problemas
 
