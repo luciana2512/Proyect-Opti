@@ -1,26 +1,27 @@
 """
-main.py — Punto de entrada standalone para la Red Logística Acuícola Real del Meta.
+main.py — Comparativa LP vs Algoritmo Genético (Ejecución Standalone)
+======================================================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
 
-Ejecuta en consola:
-  1. Modelo de Programación Lineal (solución exacta)
-  2. Algoritmo Genético de Flujos (solución heurística)
-
-bajo los mismos datos de entrada y genera una tabla comparativa con:
-  - Costo total de la solución
-  - Tiempo de ejecución (ms)
-  - Factibilidad (¿se cumple el 100% de restricciones?)
-  - Gap porcentual respecto al óptimo LP
+Script de consola que ejecuta ambos enfoques de optimización bajo los
+mismos datos de entrada y genera una tabla comparativa con:
+    · Costo total de la solución hallada
+    · Tiempo de ejecución (milisegundos)
+    · Factibilidad (¿cumple el 100% de restricciones?)
+    · Gap porcentual del AG respecto al óptimo LP
 
 Uso:
     python main.py
-    python main.py --seed 42
-    python main.py --generaciones 300 --poblacion 100 --seed 7
+    python main.py --seed 42 --generaciones 200 --poblacion 80
+
+Módulos utilizados:
+    modelo_pl.py          → Programación Lineal (solución exacta)
+    genetic_algorithm.py  → AG de Flujos (solución heurística)
 """
 import sys
 import argparse
-import time
 
-sys.stdout.reconfigure(encoding='utf-8')
+sys.stdout = __import__('io').TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 from modelo_pl import resolver_pl, cargar_red
 from genetic_algorithm import algoritmo_genetico_flujos

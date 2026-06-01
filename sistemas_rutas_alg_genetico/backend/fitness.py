@@ -1,8 +1,16 @@
 """
-Módulo de fitness para evaluar la calidad de las rutas.
-Fitness = distancia total recorrida (menor es mejor)
+fitness.py — Funciones de Aptitud para el AG de Distribución (TSP)
+===================================================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
+
+Evalúa la calidad de una ruta (cromosoma) del AG tipo TSP.
+El fitness es la distancia total recorrida — menor es mejor.
+
+Funciones públicas:
+    calcular_fitness(ruta, matriz_distancias)                      → float
+    evaluar_poblacion(poblacion, matriz_distancias)                → list[float]
+    calcular_fitness_con_penalizacion(ruta, matriz, capacidad, ...) → float
 """
-import numpy as np
 
 
 def calcular_fitness(ruta, matriz_distancias):

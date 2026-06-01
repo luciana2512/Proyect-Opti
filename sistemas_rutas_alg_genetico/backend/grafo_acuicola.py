@@ -1,13 +1,28 @@
 """
-Módulo de Teoría de Grafos para la Red Logística Acuícola.
+grafo_acuicola.py — Teoría de Grafos y Algoritmos de Red
+=========================================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
 
-Implementa:
-  - Construcción del grafo dirigido ponderado G = (V, E)
-  - Ruta óptima: Dijkstra y Bellman-Ford
-  - Flujo máximo (Ford-Fulkerson / Edmonds-Karp)
-  - Identificación de cuellos de botella y ruta crítica
-  - Geometría real de rutas viales (OSRM)
-  - Optimización de ruta de distribución local con Algoritmo Genético
+Modela la red como Grafo Dirigido Ponderado G = (V, E) usando NetworkX.
+Los pesos de las aristas son el costo total de transporte (dist_km × costo_ton_km).
+
+Algoritmos implementados:
+    · Dijkstra          — ruta de menor costo (sin pesos negativos)
+    · Bellman-Ford      — ruta de menor costo (detecta ciclos negativos)
+    · Edmonds-Karp      — flujo máximo y corte mínimo (cuellos de botella)
+    · Betweenness       — centralidad de nodos (hub más crítico)
+    · Haversine TSP     — distancias reales para AG de distribución local
+
+Funciones públicas principales:
+    construir_grafo(red, flujos_pl, aristas_bloqueadas)  → nx.DiGraph
+    ruta_dijkstra(G, origen, destino)                    → dict
+    ruta_bellman_ford(G, origen, destino)                → dict
+    flujo_maximo(G, fuente, sumidero)                    → dict
+    analizar_red(G, resultado_pl)                        → dict
+    validar_conectividad(G)                              → dict
+    optimizar_distribucion_local(transito_id, ...)       → dict  [AG TSP]
+    optimizar_ag_flujos_red(transito_id, ...)            → dict  [AG Flujos]
+    obtener_geometria_ruta_real(ruta_ids, nodos_dict)    → list  [OSRM]
 """
 import json
 import os
@@ -134,7 +149,7 @@ def _sugerir_alternativas(G, origen, destino, n=3):
                     candidatos_costo[nid] = nx.dijkstra_path_length(G, origen, nid, weight='costo')
                 except Exception:
                     pass
-        for nid in sorted(candidatos_costo, key=candidatos_costo.get)[:n]:
+        for nid in sorted(candidatos_costo, key=lambda k: candidatos_costo.get(k, float('inf')))[:n]:
             resultado['desde_origen'].append({
                 'id':     nid,
                 'nombre': G.nodes[nid].get('nombre', nid),
@@ -151,7 +166,7 @@ def _sugerir_alternativas(G, origen, destino, n=3):
                     candidatos_costo[nid] = nx.dijkstra_path_length(G, nid, destino, weight='costo')
                 except Exception:
                     pass
-        for nid in sorted(candidatos_costo, key=candidatos_costo.get)[:n]:
+        for nid in sorted(candidatos_costo, key=lambda k: candidatos_costo.get(k, float('inf')))[:n]:
             resultado['hacia_destino'].append({
                 'id':     nid,
                 'nombre': G.nodes[nid].get('nombre', nid),

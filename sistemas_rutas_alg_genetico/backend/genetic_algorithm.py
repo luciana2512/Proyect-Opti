@@ -1,15 +1,26 @@
 """
-Algoritmo Genético para optimización de rutas y flujos en la Red Acuícola.
+genetic_algorithm.py — Algoritmos Genéticos
+============================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
 
-Contiene dos algoritmos:
-  1. algoritmo_genetico      — TSP para ordenar entregas locales de un hub.
-  2. algoritmo_genetico_flujos — AG sobre vector de flujos de la red completa.
+Contiene dos AGs con propósitos distintos:
 
-Operadores implementados:
-  - Selección por torneo (k=3)
-  - Cruce PMX para permutaciones (TSP) / Blend crossover BLX-α (flujos)
-  - Mutación por intercambio (TSP) / Mutación gaussiana clampada (flujos)
-  - Elitismo configurable
+AG 1 — TSP de distribución local (algoritmo_genetico)
+    Cromosoma : permutación de supermercados [hub, D3, D1, D7, ..., hub]
+    Fitness   : distancia total del recorrido (km Haversine)
+    Uso       : optimizar el orden de entrega desde un hub a sus supermercados
+    Operadores: selección por torneo · cruce PMX · mutación por intercambio
+
+AG 2 — Flujos de red completa (algoritmo_genetico_flujos)
+    Cromosoma : vector real [x_1, ..., x_54] — flujo en cada arista
+    Fitness   : costo transporte + penalización demanda + penalización oferta
+                + penalización por calidad baja en tránsitos
+    Uso       : comparativa heurística vs solución exacta del LP
+    Operadores: selección por torneo · BLX-α (alpha aleatorio) · mutación gaussiana
+
+Funciones públicas:
+    algoritmo_genetico(matriz_distancias, ..., seed) → dict
+    algoritmo_genetico_flujos(red, ..., seed)        → dict
 """
 import random
 import time
