@@ -1,10 +1,32 @@
 """
-Análisis de Sensibilidad — Red Logística Acuícola Real del Meta.
+analisis_sensibilidad.py — Análisis de Sensibilidad (Escenarios What-If)
+=========================================================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
 
-Implementa tres escenarios What-if:
-  1. Aumento del 15% en el costo de combustible en rutas de los orígenes del Meta.
-  2. Cierre de una vía principal (arista eliminada).
-  3. Pérdida masiva de calidad en un centro de acopio específico.
+Implementa los 3 escenarios críticos solicitados en el proyecto:
+
+Escenario 1 — Alza de combustible en el Meta
+    Incrementa el costo por tonelada-km en un % configurable para todas
+    las aristas que salen de los orígenes del Meta (O1, O2, O3).
+
+Escenario 2 — Cierre de una vía principal
+    Elimina una arista del modelo (simula bloqueo, desastre o mantenimiento).
+    El LP busca rutas alternativas o declara infactibilidad.
+
+Escenario 3 — Pérdida masiva de calidad en un centro de acopio
+    Baja la calidad de un nodo de tránsito al 35% (umbral mínimo: 40%).
+    Bloquea o penaliza sus aristas de salida según el factor configurado.
+
+Cada escenario retorna una comparativa base vs escenario con:
+    · Δ Costo total (KCOP y %)   · Δ Ganancia (KCOP)
+    · Top 5 cambios de flujo     · Cuellos de botella nuevos
+    · Estado (factible / infactible)
+
+Funciones públicas:
+    escenario_combustible_meta(incremento_pct, red)        → dict
+    escenario_cierre_via(arista_id, red)                   → dict
+    escenario_calidad_acopio(nodo_id, factor_penalizacion) → dict
+    ejecutar_todos_los_escenarios(red)                     → dict
 """
 import json
 import os
@@ -190,7 +212,7 @@ def _formatear_resultado(escenario, nombre, descripcion, parametro_modificado,
     factible_nuevo = resultado_nuevo.get('factible', False)
 
     delta_costo = nuevo_costo - base_costo if factible_nuevo else None
-    delta_pct   = (delta_costo / base_costo * 100) if (factible_nuevo and base_costo > 0) else None
+    delta_pct   = (delta_costo / base_costo * 100) if (factible_nuevo and base_costo > 0 and delta_costo is not None) else None
 
     base_gan  = resultado_base.get('ganancia', 0) or 0
     nuevo_gan = resultado_nuevo.get('ganancia', 0) if factible_nuevo else None

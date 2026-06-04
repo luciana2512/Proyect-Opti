@@ -1,3 +1,27 @@
+"""
+api_rutas_reales.py — API REST Flask
+=====================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
+
+Servidor Flask que expone todos los algoritmos del proyecto como endpoints HTTP.
+El frontend React consume esta API en http://localhost:5000.
+
+Endpoints disponibles:
+    GET  /api/health
+    GET  /api/acuicola/red
+    GET  /api/acuicola/optimizar          → LP + Dijkstra/BF + Flujo Máximo
+    GET  /api/acuicola/ruta               → Solo ruta óptima (Dijkstra/BF)
+    GET  /api/acuicola/ruta_escenario     → Ruta bajo condiciones What-If
+    GET  /api/acuicola/sensibilidad/1     → Escenario: alza combustible
+    GET  /api/acuicola/sensibilidad/2     → Escenario: cierre de vía
+    GET  /api/acuicola/sensibilidad/3     → Escenario: pérdida de calidad
+    GET  /api/acuicola/sensibilidad/todos → Los 3 escenarios en paralelo
+    GET  /api/acuicola/distribucion/<hub> → AG TSP desde un hub
+    GET  /api/acuicola/ag_red             → AG Flujos vs LP (comparativa)
+    GET  /api/acuicola/validar_conectividad
+    POST /api/acuicola/geometria_aristas  → Geometría OSRM por aristas
+    GET  /api/acuicola/geometria_ruta     → Geometría OSRM por secuencia de nodos
+"""
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')

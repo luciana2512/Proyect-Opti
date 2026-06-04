@@ -1,16 +1,27 @@
 """
-Modelo de Programación Lineal para la Red Logística Acuícola Real del Meta.
+modelo_pl.py — Modelo de Programación Lineal
+=============================================
+Red Logística Acuícola Real del Meta · Proyecto Final 2026-1
 
-Minimiza el costo total de transporte, operación y almacenamiento sujeto a:
-  - Equilibrio de flujo en nodos de tránsito (con merma + variable de stock explícita)
-  - Capacidad de aristas (camiones)
-  - Cumplimiento exacto de demanda en destinos
-  - Restricciones de calidad (penalización o bloqueo)
+Resuelve la asignación óptima de flujos en la red jerárquica:
+    6 Orígenes → 10 Centros de Acopio → 29 Supermercados
 
-Cambios respecto a versión anterior:
-  - costo_almacen_dia y costo_operacion_dia incluidos en la función objetivo
-  - Balance de tránsito como igualdad con variable de stock explícita s_t
-  - Medición de tiempo de ejecución del solver
+Función objetivo (minimizar):
+    Costo de transporte  +  Costo de operación  +  Costo de almacenamiento
+
+Restricciones:
+    1. Oferta: salidas de cada origen ≤ producción disponible
+    2. Balance de tránsito: entradas × (1−merma) = salidas + stock (igualdad)
+    3. Capacidad de despacho: salidas de cada tránsito ≤ capacidad
+    4. Demanda exacta: flujo en cada supermercado = demanda solicitada
+
+Solver: HiGHS (scipy.optimize.linprog, method='highs')
+
+Funciones públicas:
+    resolver_pl(red, factores_costo, aristas_bloqueadas,
+                penalizaciones_calidad, umbral_calidad) → dict
+    calcular_costo_arista(arista) → float
+    cargar_red() → dict
 """
 import sys
 import os

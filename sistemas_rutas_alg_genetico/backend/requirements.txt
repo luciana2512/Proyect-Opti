@@ -1,15 +1,15 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# Dependencias — Red Logística Acuícola Real del Meta
+# Instalación: pip install -r requirements.txt
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Servidor web
 Flask>=2.0
 Flask-CORS>=3.0.10
-numpy>=1.24
-osmnx>=1.2.2
-geopy>=2.3.0
-matplotlib>=3.6
-folium>=0.14.0
-geopandas>=0.13.0
-scikit-learn>=1.0
-google-genai>=1.0.0
-python-dotenv>=1.0.0
 
-# Notes:
-# - On Windows, installing `osmnx`/`geopandas` may require system libraries (GDAL/PROJ/GEOS).
-#   If you hit build errors, consider using conda or installing prebuilt wheels for those libs.
+# Álgebra lineal y optimización
+numpy>=1.24
+scipy>=1.10          # LP solver (HiGHS via scipy.optimize.linprog)
+
+# Teoría de grafos
+networkx>=3.0        # Dijkstra, Bellman-Ford, Flujo Máximo (Edmonds-Karp)
