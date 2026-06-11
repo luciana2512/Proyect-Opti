@@ -1,0 +1,337 @@
+/* ───────────────────────────────────────────────────────────────────────── */
+/* Estilos personalizados para Driver.js Tour Guide */
+/* ───────────────────────────────────────────────────────────────────────── */
+
+/* Animación de entrada del botón de ayuda */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Animación de pulse para atraer atención */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Animación para el highlight */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.3);
+  }
+}
+
+/* Botón de ayuda con tema oscuro/claro */
+.driver-guide-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 40;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  border: none;
+  cursor: pointer;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+  animation: slideInRight 0.5s ease-out;
+}
+
+.driver-guide-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 20px 35px -5px rgba(0, 0, 0, 0.15);
+}
+
+.driver-guide-button:active {
+  transform: scale(0.95);
+}
+
+/* Tema claro */
+.light .driver-guide-button {
+  background-color: #2563eb;
+  color: white;
+}
+
+.light .driver-guide-button:hover {
+  background-color: #1d4ed8;
+}
+
+/* Tema oscuro */
+.dark .driver-guide-button {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.dark .driver-guide-button:hover {
+  background-color: #2563eb;
+}
+
+/* Popover personalizado para Driver.js */
+.driver-popover {
+  background-color: var(--background, white);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  color: var(--foreground, #000);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  max-width: 450px;
+  padding: 24px;
+  animation: slideInRight 0.3s ease-out;
+}
+
+.dark .driver-popover {
+  background-color: #1f2937;
+  border-color: #374151;
+  color: #f3f4f6;
+}
+
+.light .driver-popover {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+  color: #1f2937;
+}
+
+/* Título del popover */
+.driver-popover-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: var(--foreground, #000);
+  letter-spacing: -0.5px;
+}
+
+.dark .driver-popover-title {
+  color: #f3f4f6;
+}
+
+.light .driver-popover-title {
+  color: #1f2937;
+}
+
+/* Descripción del popover */
+.driver-popover-description {
+  font-size: 14px;
+  color: var(--muted-foreground, #666);
+  margin: 0 0 20px 0;
+  line-height: 1.6;
+  font-weight: 500;
+}
+
+.dark .driver-popover-description {
+  color: #d1d5db;
+}
+
+.light .driver-popover-description {
+  color: #6b7280;
+}
+
+/* Contenedor de botones */
+.driver-popover-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+/* Botones generales */
+.driver-popover-button {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  white-space: nowrap;
+}
+
+.driver-popover-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.driver-popover-button:active {
+  transform: translateY(0);
+}
+
+/* Botón Next */
+.driver-popover-button-next {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.driver-popover-button-next:hover {
+  background-color: #2563eb;
+}
+
+.dark .driver-popover-button-next {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.dark .driver-popover-button-next:hover {
+  background-color: #1d4ed8;
+}
+
+/* Botón Previous */
+.driver-popover-button-prev {
+  background-color: #6b7280;
+  color: white;
+}
+
+.driver-popover-button-prev:hover {
+  background-color: #4b5563;
+}
+
+.dark .driver-popover-button-prev {
+  background-color: #4b5563;
+  color: white;
+}
+
+.dark .driver-popover-button-prev:hover {
+  background-color: #374151;
+}
+
+/* Botón Close */
+.driver-popover-button-close {
+  background-color: #ef4444;
+  color: white;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.driver-popover-button-close:hover {
+  background-color: #dc2626;
+}
+
+.dark .driver-popover-button-close {
+  background-color: #dc2626;
+}
+
+.dark .driver-popover-button-close:hover {
+  background-color: #b91c1c;
+}
+
+/* Overlay de fondo */
+.driver-overlay {
+  background-color: rgba(0, 0, 0, 0);
+  backdrop-filter: blur(0px);
+}
+
+/* Elemento resaltado */
+.driver-highlighted {
+  box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.3) !important;
+  border-radius: 8px !important;
+  transition: all 0.3s ease-in-out;
+}
+
+.driver-highlighted {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Indicador de progreso */
+.driver-progress {
+  color: #3b82f6;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.dark .driver-progress {
+  color: #60a5fa;
+}
+
+/* Flecha del popover */
+.driver-popover-arrow {
+  background-color: var(--background, white);
+  border-color: var(--border, #e5e7eb);
+}
+
+.dark .driver-popover-arrow {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.light .driver-popover-arrow {
+  background-color: #ffffff;
+  border-color: #e5e7eb;
+}
+
+/* Responsive: Para pantallas pequeñas */
+@media (max-width: 640px) {
+  .driver-popover {
+    max-width: 90vw;
+    padding: 20px;
+    font-size: 14px;
+  }
+
+  .driver-popover-title {
+    font-size: 16px;
+  }
+
+  .driver-popover-description {
+    font-size: 13px;
+  }
+
+  .driver-popover-button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .driver-guide-button {
+    width: 50px;
+    height: 50px;
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
+/* Accesibilidad: Focus visible */
+.driver-popover-button:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Reducir movimiento si el usuario lo prefiere */
+@media (prefers-reduced-motion: reduce) {
+  .driver-guide-button,
+  .driver-popover {
+    animation: none;
+  }
+
+  .driver-highlighted {
+    animation: none;
+  }
+
+  .driver-popover-button:hover {
+    transform: none;
+  }
+}
+
+/* Estado deshabilitado */
+.driver-popover-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.driver-popover-button:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
